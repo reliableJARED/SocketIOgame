@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+	<title>Simple Canvas Game</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<!-- jQuery -->
+			<script type="text/javascript" src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+		<!-- Socket IO -->
+		    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
+		 <!-- Bootstrap -->
+			<script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"></script>
+			<link rel="stylesheet" type="text/css" href="static/css/game_beta.css">
+	</head>
+	<body>
+		<div class="container-fluid">
+		<div class="row">
+		<div id="avatarSelect">
+		<input type="radio" name="avatarImg" value="0" style="float:left">HERO<br>
+ 		<input type="radio" name="avatarImg" value="1" style="float:left">PONY<br>
+ 		</div>
+		<div id="canvasHolder"></div>
+		</div>
+		<div class="row">
+		<div class="sm-col-4 dpad" id="MoveUpLeft" value="38" ></div>
+		<button class="sm-col-4 dpad" id="MoveUp" value="38" >UP</button>
+		<div class="sm-col-4 dpad" id="MoveUpRight" value="38" ></div>
+		</div>
+		<div class="row">
+		<button class="sm-col-4 dpad" id="MoveLeft" value="37" >LEFT</button> 
+		<div class="sm-col-4 dpad"></div>
+		<button class="sm-col-4 dpad" id="MoveRight" value="39">RIGHT</button>
+		</div>
+		<div class="row">
+		<div class="sm-col-4 dpad"></div>
+		<button class="sm-col-4 dpad" id="MoveDown" value="40">DOWN</button>
+		<div class="sm-col-4 dpad"></div>
+		</div>
+		</div>
+		<!-- JS manipulating canvas must be below the actual canvas element -->
+		<script src="static/js/game_beta.js"></script>
+	</body>
+</html>
