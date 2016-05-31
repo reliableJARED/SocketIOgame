@@ -31,17 +31,14 @@ def test_disconnect():
 @socketio.on('message')
 def handle_message(data):
     dataIN = json.loads(data)
+    specialKey = "movement"
 
     #player is broadcasting move
     if dataIN.iterkeys().next() == "movement":
-        specialKey = "movement"
-	for key in dataIN[specialKey]:
-            #if there is actual data emit it
-            if bool(dataIN[specialKey]):
-                emit('message',json.dumps(dataIN[specialKey]),broadcast=True)
-                print dataIN[specialKey]
+        emit('message',json.dumps(dataIN[specialKey]),broadcast=True)
+        print dataIN[specialKey]
 
-    #player is updating avatar image
+    #player is broadcasting avatar image update
     if dataIN.iterkeys().next() == "avatar":
         emit('message',json.dumps(dataIN),broadcast=True)
         print dataIN

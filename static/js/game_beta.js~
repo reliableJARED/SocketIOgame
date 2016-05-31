@@ -19,7 +19,7 @@ function randomString(length, chars) {
     return result;
 }
 var UNIQUE_PLAYER_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ');
-console.log(UNIQUE_PLAYER_ID);
+
 // create the canvas element
 var canvas = document.createElement("canvas");
 
@@ -32,9 +32,6 @@ $('#canvasHolder').append(canvas);
 // Background image
 var bgReady = false;
 var bgImage = new Image();
-bgImage.onload = function () {
-	bgReady = true;
-};
 bgImage.src = "static/images/background.png";
 
 
@@ -88,8 +85,8 @@ addEventListener("keyup", function (e) {
 var theDpad = document.getElementsByClassName("dpad");
 
 for (var i = 0; i < theDpad.length; i++) {
-    theDpad[i].addEventListener('mousedown', dpad_move, false);
-    theDpad[i].addEventListener('mouseup', dpad_stop, false);
+    theDpad[i].addEventListener('touchstart', dpad_move, false);
+    theDpad[i].addEventListener('touchend', dpad_stop, false);
 };
 function dpad_move() {
     var d = this.getAttribute("value");
@@ -110,41 +107,44 @@ var PlacePlayer = function () {
 	hero.y = canvas.height / 2;
 };
 
-// Update game object positions !!!MAJOR WORK HORSE FUNCTION!!!
+// Update game object positions
 var update = function (modifier) {
 	var PreviousFramePosition_X = hero.x;
 	var PreviousFramePosition_Y = hero.y;
 
-	
-	if (38 in keysDown) { // Player holding up
+	if (38 in keysDown) { // Player holding UP
 		if (hero.y >0) {//**first - check for wall collision
 			hero.y -= hero.speed * modifier;
 		}else {};//hit wall, down' allow further movement in this direction
 	}
-	if (40 in keysDown) { // Player holding down
+	if (40 in keysDown) { // Player holding DOWN
 		if (hero.y < (canvas.height-hero.height) ){//check for wall
 			hero.y += hero.speed * modifier;		
 		}else {};//hit wall, down' allow further movement in this direction
 	}
-	if (37 in keysDown) { // Player holding left
+	if (37 in keysDown) { // Player holding LEFT
 		if (hero.x > 0){//check for wall
 			hero.x -= hero.speed * modifier;	
 		}else {};//hit wall, down' allow further movement in this direction
 	}
-	if (39 in keysDown) { // Player holding right
+	if (39 in keysDown) { // Player holding RIGHT
 		if (hero.x < (canvas.width-hero.width)){
 			hero.x += hero.speed * modifier;
 		}else {};//hit wall, down' allow further movement in this direction
 	}
 	//If player has made a move, tell the server so movement can be broadcast to other connected players
-	//also tell server what your current avatar img is encase you change
+	//hero.imgIndex is broadcast so others know what image to use for you if you are new to the game.
+	//should change this to only being broadcast on connection...TODO
 	if (PreviousFramePosition_X !== hero.x || PreviousFramePosition_Y !== hero.y) {
-		mySocket.send(JSON.stringify({"movement":{"player":UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex}}));//tell server what my moves are
+		mySocket.send(JSON.stringify({"movement":{"player":UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex}}));
 	}
 };
 
 // Draw everything
 var render = function () {
+	//GOOD EXAMPLE OF USING ctx.drawImage()
+	//http://www.williammalone.com/articles/create-html5-canvas-javascript-sprite-animation/
+	
 	//background
 	ctx.drawImage(bgImage, 0, 0);
 	
@@ -171,7 +171,7 @@ var main = function () {
 
 	then = now;
 
-	// Request to do this again ASAP
+	// repeat
 	requestAnimationFrame(main);
 };
 
@@ -180,9 +180,8 @@ var w = window;
 requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
 
 
-
 $(document).ready(function(){
-	//USER selects their avatar image
+	//if user selects an avatar image
 	$('#avatarSelect input').on('change', function() {
 		//get selection value
 		var index = parseInt($('input[name=avatarImg]:checked', '#avatarSelect').val());
@@ -201,7 +200,7 @@ $(document).ready(function(){
 		$(".dpad").css("display","none");
 	};
 	
-	//HEAVY LIFTING DONE HERE
+	//HEAVY LIFTING COMM WITH SERVER DONE HERE
 	mySocket.on('message', function(msg) {
 			var JSONdata = JSON.parse(msg);
 			
@@ -209,10 +208,13 @@ $(document).ready(function(){
 			if (Object.keys(JSONdata)[0] === 'avatar'){
 				//Check if the message in was the echo of players avatar change
 			  if (JSONdata.avatar.player != UNIQUE_PLAYER_ID) {
+			  	
 				//get the index for the new image they are using
 					var ix = parseInt(JSONdata.avatar.ix);
+					
 					//loop through the player objects
 					for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
+						
 						//when you find the right player id, update the player img
 						if(CONNECTED_PLAYER_OBJECTS[h].id === JSONdata.avatar.player ){
 							CONNECTED_PLAYER_OBJECTS[h].playerImg = PLAYER_IMAGE_HOLDER[ix]//set img again		
@@ -228,22 +230,25 @@ $(document).ready(function(){
 				//if not an echo, check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
 			   for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
 					if (CONNECTED_PLAYER_OBJECTS[h].id===JSONdata.player){
+						
 						//if you DO have this player ID already, make true
 						playerExists = true;
+						
 						// update the player object location on screen						
 						CONNECTED_PLAYER_OBJECTS[h].x = JSONdata.x;
 						CONNECTED_PLAYER_OBJECTS[h].y = JSONdata.y;
-						//CONNECTED_PLAYER_OBJECTS[h] = JSONdata //REASSIGN ENTIRE PLAYER OBJECT, IMG AND ALL
+
 					}else {
 						//if you do not this player ID already, i.e. player newly connected to game
 						playerExists=false;};
 		 		};//END for loop	
-		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the new player Id that was found
+		 		
+		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
 		 		if (!playerExists && JSONdata.player) {
 		 			//builder takes (id, x,y,imgIdx), 
 		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
 		 			CONNECTED_PLAYER_OBJECTS.push(new hero2(JSONdata.player,JSONdata.x,JSONdata.y,parseInt(JSONdata.ix)));
-		 			playerExists=true;
+		 			playerExists=true;//reset...
 		 		};
 		 	 
 			}	
