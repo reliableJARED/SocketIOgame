@@ -20,6 +20,7 @@ function randomString(length, chars) {
 }
 var UNIQUE_PLAYER_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ');
 
+
 // create the canvas element
 var canvas = document.createElement("canvas");
 
@@ -181,6 +182,10 @@ requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame
 
 
 $(document).ready(function(){
+	
+	/*  TODO: send unique ID to server so it can associate with server generated request.sid */
+	mySocket.send(JSON.stringify({"new":UNIQUE_PLAYER_ID}));
+	
 	//if user selects an avatar image
 	$('#avatarSelect input').on('change', function() {
 		//get selection value
@@ -202,7 +207,19 @@ $(document).ready(function(){
 	
 	//HEAVY LIFTING COMM WITH SERVER DONE HERE
 	mySocket.on('message', function(msg) {
+		
 			var JSONdata = JSON.parse(msg);
+			
+
+			if (Object.keys(JSONdata)[0] === 'remove'){
+				console.log(CONNECTED_PLAYER_OBJECTS);
+				for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
+					if(JSONdata.remove === CONNECTED_PLAYER_OBJECTS[h].id){
+						CONNECTED_PLAYER_OBJECTS.splice(h,1);};
+					};
+				console.log(CONNECTED_PLAYER_OBJECTS);
+			};
+			
 			
 			//special msg header 'avatar' if they changed their avatar image
 			if (Object.keys(JSONdata)[0] === 'avatar'){
