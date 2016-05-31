@@ -24,8 +24,10 @@ indicating you are on BRANCHNAME, if not switch to it
 >git checkout BRANCHNAME
 
 Now do all your work on your local files, when you're done add the files to the staging area
-
+for all files use:
 >git add -A
+for only mod/del files use:
+>git add -u
 
 when you enter that nothing happens, but it worked
 then you need to commit the changes and add a message
