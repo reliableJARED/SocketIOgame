@@ -10,7 +10,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
            		
-          
+#player ID holder dictionary
+players = {}
+
 @app.route('/')
 def index():
     print "new player entering game"
@@ -26,7 +28,9 @@ def test_connect():
 @socketio.on('disconnect', namespace='/')
 def test_disconnect():
     print 'player disconnected'
-    print request.sid
+    print "remove:" 
+    print players[request.sid]
+    emit('message',json.dumps({"remove":players[request.sid]}),broadcast=True)
 
 @socketio.on('message')
 def handle_message(data):
@@ -42,9 +46,16 @@ def handle_message(data):
     if dataIN.iterkeys().next() == "avatar":
         emit('message',json.dumps(dataIN),broadcast=True)
         print dataIN
+    
+        #player is broadcasting avatar image update
+    if dataIN.iterkeys().next() == "new":
+        print dataIN
+        #link the socketIO generated session ID, with users locally generated player ID
+        players[request.sid] = dataIN["new"]
+        print players
 
     
 
 if __name__ == '__main__':
     #CHANGE HOST
-    socketio.run(app,host='192.168.1.103',port=8000)
+    socketio.run(app,host='10.10.10.62',port=8000)
