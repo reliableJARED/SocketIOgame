@@ -1,0 +1,179 @@
+//Tutorial:
+/*
+http://www.lostdecadegames.com/how-to-make-a-simple-html5-canvas-game/
+*/
+
+//Global socket connection instance
+mySocket = io.connect();//create new websocket, 
+
+
+
+var UNIQUE_PLAYER_ID = Math.round(Math.random()*1000000);//note the number of digits is random too, 200 or 20,000 could be returned
+var CONNECTED_PLAYER_OBJECTS =[];//container for any connected players
+
+
+// Get the canvas element
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext("2d");
+//assign dimensions
+canvas.width = 512;
+canvas.height = 480;
+document.body.appendChild(canvas);
+
+// Background image
+var bgReady = false;
+var bgImage = new Image();
+bgImage.onload = function () {
+	bgReady = true;
+};
+bgImage.src = "static/images/background.png";
+
+// Hero image
+var heroReady = false;
+var heroImage = new Image();
+heroImage.onload = function () {
+	heroReady = true;
+};
+heroImage.src = "static/images/hero.png";
+
+// player object builder for ***NETWORK CONNECTED PLAYERS****
+function hero2(id, x, y) {
+  this.id = id;
+  this.x = x;
+  this.y = y;
+  this.hero2Image = new Image();
+  this.hero2Image.src = "static/images/hero2.png";
+};
+
+// Game objects
+var hero = {
+	speed: 128, // movement in pixels per second
+	height: 45,
+	width: 45
+};
+
+
+// Handle keyboard/touch controls
+var keysDown = {};
+
+addEventListener("keydown", function (e) {
+	keysDown[e.keyCode] = true;
+}, false);
+
+addEventListener("keyup", function (e) {
+	delete keysDown[e.keyCode];
+}, false);
+
+addEventListener("keydown", function (e) {
+	keysDown[e.keyCode] = true;
+}, false);
+
+// place player when first starting
+var PlacePlayer = function () {
+	hero.x = canvas.width / 2;
+	hero.y = canvas.height / 2;
+};
+
+// Update game object positions !!!MAJOR WORK HORSE FUNCTION!!!
+var update = function (modifier) {
+	var PreviousFramePosition_X = hero.x;
+	var PreviousFramePosition_Y = hero.y;
+	
+	if (38 in keysDown) { // Player holding up
+		if (hero.y >0) {//**first - check for wall collision
+			hero.y -= hero.speed * modifier;
+			
+		}else {};//hit wall, down' allow further movement in this direction
+	}
+	if (40 in keysDown) { // Player holding down
+		if (hero.y < (canvas.height-hero.height) ){//check for wall
+			hero.y += hero.speed * modifier;
+			
+		}else {};//hit wall, down' allow further movement in this direction
+	}
+	if (37 in keysDown) { // Player holding left
+		if (hero.x > 0){//check for wall
+			hero.x -= hero.speed * modifier;
+			
+		}else {};//hit wall, down' allow further movement in this direction
+	}
+	if (39 in keysDown) { // Player holding right
+		if (hero.x < (canvas.width-hero.width)){
+			hero.x += hero.speed * modifier;
+		
+		}else {};//hit wall, down' allow further movement in this direction
+	}
+	//If player has made a move, tell the server so movement can be broadcast to other connected players
+	if (PreviousFramePosition_X !== hero.x || PreviousFramePosition_Y !== hero.y) {
+		mySocket.send(JSON.stringify({"movement":{"player":UNIQUE_PLAYER_ID,'x':hero.x,'y':hero.y}}));//tell server what my moves are
+	}
+};
+
+// Draw everything
+var render = function () {
+	if (bgReady) {
+		ctx.drawImage(bgImage, 0, 0);
+	}
+	if (heroReady) {
+		ctx.drawImage(heroImage, hero.x, hero.y);
+	}
+	
+	//IF Other players are connected draw them
+	if (CONNECTED_PLAYER_OBJECTS.length>0) {
+		for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
+			ctx.drawImage(CONNECTED_PLAYER_OBJECTS[h].hero2Image, CONNECTED_PLAYER_OBJECTS[h].x, CONNECTED_PLAYER_OBJECTS[h].y);	
+		};
+	};
+};
+
+// The main game loop
+var main = function () {
+	var now = Date.now();
+	var delta = now - then;
+
+	update(delta / 1000);//update is used to smooth out player connection speed effecting game play
+	render();
+
+	then = now;
+
+	// Request to do this again ASAP
+	requestAnimationFrame(main);
+};
+
+// Cross-browser support for requestAnimationFrame
+var w = window;
+requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
+
+
+
+$(document).ready(function(){
+
+	mySocket.on('message', function(msg) {
+			var JSONdata = JSON.parse(msg);
+			//CHeck if the message in was the echo of players move
+			if (JSONdata.player != UNIQUE_PLAYER_ID) {
+				var playerExists;
+				//if not an echo, check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
+			   for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
+					if (CONNECTED_PLAYER_OBJECTS[h].id===parseInt(JSONdata.player)){
+						//if you do have this player ID already, update the player object
+						playerExists = true;
+						CONNECTED_PLAYER_OBJECTS[h].x=JSONdata.x;
+						CONNECTED_PLAYER_OBJECTS[h].y=JSONdata.y;
+					}else {
+						//if you do not this player ID already, i.e. player newly connected to game
+						playerExists=false;};
+		 		}
+		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the player
+		 		if (!playerExists) {
+		 			CONNECTED_PLAYER_OBJECTS.push(new hero2(parseInt(JSONdata.player),JSONdata.x,JSONdata.y));
+		 		}
+			}	
+		});
+		
+	// Let's play this game!
+	then = Date.now();//used for frame rate normalization
+	PlacePlayer();
+	main();
+});
+
