@@ -1,13 +1,13 @@
-//Tutorial:
+//Tutorials:
 /*
 http://www.lostdecadegames.com/how-to-make-a-simple-html5-canvas-game/
 http://jlongster.com/Making-Sprite-based-Games-with-Canvas
+http://davetayls.me/blog/2013/02/11/drawing-sprites-with-canvas
+http://www.williammalone.com/articles/create-html5-canvas-javascript-sprite-animation/
 */
 
 //Global socket connection instance
 mySocket = io.connect();//create new websocket, 
-
-
 
 
 var CONNECTED_PLAYER_OBJECTS =[];//container for any connected players
@@ -49,62 +49,43 @@ var ponyImage = new Image();
 ponyImage.src ="static/images/pony.png";
 PLAYER_IMAGE_HOLDER[1]=ponyImage;
 
-var cowboyImage = new Image();
-cowboyImage.src ="static/images/cowboy_sprite.png";
-PLAYER_IMAGE_HOLDER[2]=cowboyImage;
+var linkPlayer;
+var linkReady = false;
+var linkImage = new Image();
+linkImage.onload = function() {
+     linkPlayer = new Sprite(linkImage,65,65,[[0,0],[60,0],[120,0]]);
+     linkReady = true;
+};
+linkImage.src = "static/images/link_sprite65x65.png";
+
+
 /*************end player images************************/
 
-/***********SPRITE FUNCTIONS************************/
-/*Sprite utility function*/
-function Sprite(url, pos, size, speed, frames, dir, once) {
-    this.pos = pos;//the [x,y] coordinate in the image for this sprite
-    this.size = size;//size of the sprite[w,h] (just one keyframe)
-    this.speed = typeof speed === 'number' ? speed : 0;//speed in frames/sec for animating
-    this.frames = frames;//an array of frame indexes for animating: [0, 1, 2, 1]
-    this._index = 0;//counter for frames
-    this.url = url;//the path to the image for this sprite
-    this.dir = dir || 'horizontal';// which direction to move in the sprite map when animating: 'horizontal' (default) or 'vertical'
-    this.once = once; //only run the animation once, defaults to false
-};
-//used for animation speed
-Sprite.prototype.update = function(dt) {
-    this._index += this.speed*dt;
-};
-Sprite.prototype.draw = function(ctx) {
-    var frame;
+/***********SPRITE OBJECT************************
 
-    if(this.speed > 0) {
-        var max = this.frames.length;
-        var idx = Math.floor(this._index);
-        frame = this.frames[idx % max];
-
-        if(this.once && idx >= max) {
-            this.done = true;
-            return;
-        }
-    }
-    else {
-        frame = 0;
-    }
-
-
-    var x = this.pos[0];
-    var y = this.pos[1];
-
-    if(this.dir == 'vertical') {
-        y += frame * this.size[1];
-    }
-    else {
-        x += frame * this.size[0];
-    }
-
-    ctx.drawImage(resources.get(this.url),
-                  x, y,
-                  this.size[0], this.size[1],
-                  0, 0,
-                  this.size[0], this.size[1]);
+***************************************************/
+function Sprite(img, width, height, keyFrames){
+  this.img = img;
+  this.width = width;
+  this.height = height;
+  this.keyFrames = keyFrames;//[[x,y],[x,y]] locations of keyframe imgs in sprite
 };
 
+Sprite.prototype.draw = function (x,y) {
+	//use global: ctx
+	ctx.drawImage(
+		this.img,//Specifies the image
+		this.keyFrames[0][0],//The x coordinate where to start clipping
+		this.keyFrames[0][1],//The y coordinate where to start clipping
+		this.width,//The width of the clipped image
+		this.height,//The height of the clipped image
+		x,//x coordinate where to place the image on the canvas
+		y,//y coordinate where to place the image on the canvas
+		this.width,//The width of the image to use (stretch or reduce the image)
+		this.height//The height of the image to use (stretch or reduce the image)
+	);
+	this.keyFrames.push(this.keyFrames.shift())//move the keyFrame that was just rendered to the end
+};
 /******************************END SPRITE FUNCTIONS ******************/
 
 
@@ -202,12 +183,15 @@ var update = function (modifier) {
 
 // Draw everything
 var render = function () {
-	//GOOD EXAMPLE OF USING ctx.drawImage()
-	//http://www.williammalone.com/articles/create-html5-canvas-javascript-sprite-animation/
-	
+
 	//background
 	ctx.drawImage(bgImage, 0, 0);
 	
+	/**********SPRITE TESt********/
+	if (linkReady) {
+		linkPlayer.draw(100,100);
+	}
+	/****************************/
 	//main player
 	if (playerImgRead) {
 	ctx.drawImage(hero.playerImg, hero.x, hero.y);
