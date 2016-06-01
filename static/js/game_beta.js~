@@ -1,6 +1,7 @@
 //Tutorial:
 /*
 http://www.lostdecadegames.com/how-to-make-a-simple-html5-canvas-game/
+http://jlongster.com/Making-Sprite-based-Games-with-Canvas
 */
 
 //Global socket connection instance
@@ -42,12 +43,70 @@ var PLAYER_IMAGE_HOLDER=[];//container for player images
 var playerImgRead = true;//toggle during image load so canvas doesnt try and render img not loaded yet
 var heroImage = new Image();
 heroImage.src = "static/images/hero.png"
-
 PLAYER_IMAGE_HOLDER[0]=heroImage;
+
 var ponyImage = new Image();
 ponyImage.src ="static/images/pony.png";
 PLAYER_IMAGE_HOLDER[1]=ponyImage;
+
+var cowboyImage = new Image();
+cowboyImage.src ="static/images/cowboy_sprite.png";
+PLAYER_IMAGE_HOLDER[2]=cowboyImage;
 /*************end player images************************/
+
+/***********SPRITE FUNCTIONS************************/
+/*Sprite utility function*/
+function Sprite(url, pos, size, speed, frames, dir, once) {
+    this.pos = pos;//the [x,y] coordinate in the image for this sprite
+    this.size = size;//size of the sprite[w,h] (just one keyframe)
+    this.speed = typeof speed === 'number' ? speed : 0;//speed in frames/sec for animating
+    this.frames = frames;//an array of frame indexes for animating: [0, 1, 2, 1]
+    this._index = 0;//counter for frames
+    this.url = url;//the path to the image for this sprite
+    this.dir = dir || 'horizontal';// which direction to move in the sprite map when animating: 'horizontal' (default) or 'vertical'
+    this.once = once; //only run the animation once, defaults to false
+};
+//used for animation speed
+Sprite.prototype.update = function(dt) {
+    this._index += this.speed*dt;
+};
+Sprite.prototype.render = function(ctx) {
+    var frame;
+
+    if(this.speed > 0) {
+        var max = this.frames.length;
+        var idx = Math.floor(this._index);
+        frame = this.frames[idx % max];
+
+        if(this.once && idx >= max) {
+            this.done = true;
+            return;
+        }
+    }
+    else {
+        frame = 0;
+    }
+
+
+    var x = this.pos[0];
+    var y = this.pos[1];
+
+    if(this.dir == 'vertical') {
+        y += frame * this.size[1];
+    }
+    else {
+        x += frame * this.size[0];
+    }
+
+    ctx.drawImage(resources.get(this.url),
+                  x, y,
+                  this.size[0], this.size[1],
+                  0, 0,
+                  this.size[0], this.size[1]);
+};
+
+/******************************END SPRITE FUNCTIONS ******************/
+
 
 // Game objects********************
 //local player
@@ -137,7 +196,7 @@ var update = function (modifier) {
 	//hero.imgIndex is broadcast so others know what image to use for you if you are new to the game.
 	//should change this to only being broadcast on connection...TODO
 	if (PreviousFramePosition_X !== hero.x || PreviousFramePosition_Y !== hero.y) {
-		mySocket.send(JSON.stringify({"movement":{"player":UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex}}));
+		mySocket.send(JSON.stringify({"mov":{"id":UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex}}));
 	}
 };
 
@@ -187,17 +246,23 @@ $(document).ready(function(){
 	mySocket.send(JSON.stringify({"new":UNIQUE_PLAYER_ID}));
 	
 	//if user selects an avatar image
-	$('#avatarSelect input').on('change', function() {
+	$('button').click( function(e) {
 		//get selection value
-		var index = parseInt($('input[name=avatarImg]:checked', '#avatarSelect').val());
+		var index = parseInt($(this).prop("value"));
+		console.log(index);
+		
 		//set what idex in the player images is being used
 		hero.imgIndex = index;
+		
 		//assign the image to the player
    	hero.playerImg = PLAYER_IMAGE_HOLDER[index]; 
+   	
 	   //update to others that you have changed your image
-		mySocket.send(JSON.stringify({"avatar":{"player":UNIQUE_PLAYER_ID,'ix':hero.imgIndex}}));//tell server what my moves are
+		mySocket.send(JSON.stringify({"ava":{"id":UNIQUE_PLAYER_ID,'ix':hero.imgIndex}}));//tell server what my moves are
+		
 	   //call main again to redo render if radio was clicked mid loop		
-		main();
+		//main();
+		
 	});
 
 	//when you hold Phone in Portrait mode show dpad "gameboy" style
@@ -211,20 +276,19 @@ $(document).ready(function(){
 			var JSONdata = JSON.parse(msg);
 			
 
-			if (Object.keys(JSONdata)[0] === 'remove'){
+			if (Object.keys(JSONdata)[0] === 'rem'){
 				console.log(CONNECTED_PLAYER_OBJECTS);
 				for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
 					if(JSONdata.remove === CONNECTED_PLAYER_OBJECTS[h].id){
-						CONNECTED_PLAYER_OBJECTS.splice(h,1);
+						CONNECTED_PLAYER_OBJECTS.splice(h,1);};
 					};
-					console.log(CONNECTED_PLAYER_OBJECTS);
 			};
 			
 			
 			//special msg header 'avatar' if they changed their avatar image
-			if (Object.keys(JSONdata)[0] === 'avatar'){
+			if (Object.keys(JSONdata)[0] === 'ava'){
 				//Check if the message in was the echo of players avatar change
-			  if (JSONdata.avatar.player != UNIQUE_PLAYER_ID) {
+			  if (JSONdata.avatar.id != UNIQUE_PLAYER_ID) {
 			  	
 				//get the index for the new image they are using
 					var ix = parseInt(JSONdata.avatar.ix);
@@ -233,20 +297,20 @@ $(document).ready(function(){
 					for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
 						
 						//when you find the right player id, update the player img
-						if(CONNECTED_PLAYER_OBJECTS[h].id === JSONdata.avatar.player ){
+						if(CONNECTED_PLAYER_OBJECTS[h].id === JSONdata.avatar.id ){
 							CONNECTED_PLAYER_OBJECTS[h].playerImg = PLAYER_IMAGE_HOLDER[ix]//set img again		
 						};		
 					};
 							main();//call again to update with the players new img
 				};
 			} 
-			if(JSONdata.player != UNIQUE_PLAYER_ID) {
+			if(JSONdata.id != UNIQUE_PLAYER_ID) {
 			//CHeck if the message in was the echo of players move
 				var playerExists;
 
 				//if not an echo, check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
 			   for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
-					if (CONNECTED_PLAYER_OBJECTS[h].id===JSONdata.player){
+					if (CONNECTED_PLAYER_OBJECTS[h].id===JSONdata.id){
 						
 						//if you DO have this player ID already, make true
 						playerExists = true;
@@ -261,10 +325,10 @@ $(document).ready(function(){
 		 		};//END for loop	
 		 		
 		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
-		 		if (!playerExists && JSONdata.player) {
+		 		if (!playerExists && JSONdata.id) {
 		 			//builder takes (id, x,y,imgIdx), 
 		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
-		 			CONNECTED_PLAYER_OBJECTS.push(new hero2(JSONdata.player,JSONdata.x,JSONdata.y,parseInt(JSONdata.ix)));
+		 			CONNECTED_PLAYER_OBJECTS.push(new hero2(JSONdata.id,JSONdata.x,JSONdata.y,parseInt(JSONdata.ix)));
 		 			playerExists=true;//reset
 		 		};
 		 	 
