@@ -29,8 +29,8 @@ def test_connect():
 def test_disconnect():
     print 'player disconnected'
     print "remove:" 
-    print players[request.sid]
-    emit('message',json.dumps({"remove":players[request.sid]}),broadcast=True)
+    players.pop(request.sid,None)
+    emit('message',json.dumps({"remove":players[request.sid]}))
 
 @socketio.on('message')
 def handle_message(data):
@@ -39,15 +39,15 @@ def handle_message(data):
 
     #player is broadcasting move
     if dataIN.iterkeys().next() == "movement":
-        emit('message',json.dumps(dataIN[specialKey]),broadcast=True)
+        emit('message',json.dumps(dataIN[specialKey]))
         print dataIN[specialKey]
 
     #player is broadcasting avatar image update
     if dataIN.iterkeys().next() == "avatar":
-        emit('message',json.dumps(dataIN),broadcast=True)
+        emit('message',json.dumps(dataIN))
         print dataIN
     
-        #player is broadcasting avatar image update
+    #new player connected
     if dataIN.iterkeys().next() == "new":
         print dataIN
         #link the socketIO generated session ID, with users locally generated player ID
@@ -58,4 +58,4 @@ def handle_message(data):
 
 if __name__ == '__main__':
     #CHANGE HOST
-    socketio.run(app,host='10.10.10.62',port=8000)
+    socketio.run(app,host='192.168.1.103',port=8000)
