@@ -55,4 +55,5 @@ def handle_message(data):
 
 if __name__ == '__main__':
     #CHANGE HOST
-    socketio.run(app,host='10.10.10.62',port=8000)
+    ip = raw_input("Enter host ip to use: ")
+    socketio.run(app,host=ip,port=8000)

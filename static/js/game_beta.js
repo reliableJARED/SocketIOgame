@@ -52,39 +52,58 @@ PLAYER_IMAGE_HOLDER[1]=ponyImage;
 var linkPlayer;
 var linkReady = false;
 var linkImage = new Image();
-linkImage.onload = function() {
-     linkPlayer = new Sprite(linkImage,65,65,[[0,0],[60,0],[120,0]]);
+linkImage.onload = function() {   
      linkReady = true;
 };
 linkImage.src = "static/images/link_sprite65x65.png";
-
+ linkPlayer = new PlayerSprite(linkImage,62,62,{"default":[[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[60,2],[120,2]],
+     																 "down":[[0,262],[60,262],[120,262],[180,262],[240,262],[300,262],[360,262],[420,262],[480,262],[540,262]],
+     																 "up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]]});
+var linkPlayer2 =  new PlayerSprite(linkImage,62,62,{"default":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[60,0],[120,0]],
+     																 "down":[[0,260],[60,260],[120,260],[180,260],[240,260],[300,260],[360,260],[420,260],[480,260],[540,260]],
+     																 "up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]]});
+var linkPlayer3 = new PlayerSprite(linkImage,62,62,{"default":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[60,0],[120,0]],
+     																 "down":[[0,260],[60,260],[120,260],[180,260],[240,260],[300,260],[360,260],[420,260],[480,260],[540,260]],
+     																 "up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]]});
+var linkPlayer4 = new PlayerSprite(linkImage,62,62,{"default":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[60,0],[120,0]],
+     																 "down":[[0,260],[60,260],[120,260],[180,260],[240,260],[300,260],[360,260],[420,260],[480,260],[540,260]],
+     																 "up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]],
+     																 "left":[[0,325],[60,325],[120,325],[180,325],[240,325],[300,325],[360,325],[420,325],[480,325],[540,325]]});
 
 /*************end player images************************/
 
-/***********SPRITE OBJECT************************
 
+
+/***********SPRITE CLASS************************
 ***************************************************/
-function Sprite(img, width, height, keyFrames){
+function PlayerSprite(img, width, height,keyFrames,speed){
   this.img = img;
   this.width = width;
   this.height = height;
-  this.keyFrames = keyFrames;//[[x,y],[x,y]] locations of keyframe imgs in sprite
+  this.keyFrames = keyFrames;//{"up":[[x,y],[x,y]]} locations of keyframe imgs in sprite
+  this.frameRate = [0];
+  this.frameRate.push(speed || 5);//speed of animation, inverse of fps, # frames to draw before moving to next keyframe or default value
 };
 
-Sprite.prototype.draw = function (x,y) {
-	//use global: ctx
-	ctx.drawImage(
+PlayerSprite.prototype.draw = function (x,y,direction) {
+		var direction = direction || "default";
+	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+	ctx.drawImage(//use global: ctx
 		this.img,//Specifies the image
-		this.keyFrames[0][0],//The x coordinate where to start clipping
-		this.keyFrames[0][1],//The y coordinate where to start clipping
+		this.keyFrames[direction][0][0],//The x coordinate top left corner of frame on sprite sheet
+		this.keyFrames[direction][0][1],//The y coordinate top left corner of frame on sprite sheet
 		this.width,//The width of the clipped image
 		this.height,//The height of the clipped image
 		x,//x coordinate where to place the image on the canvas
 		y,//y coordinate where to place the image on the canvas
-		this.width,//The width of the image to use (stretch or reduce the image)
-		this.height//The height of the image to use (stretch or reduce the image)
+		this.width,//The width to stretch or reduce the image
+		this.height//The height to stretch or reduce the image
 	);
-	this.keyFrames.push(this.keyFrames.shift())//move the keyFrame that was just rendered to the end
+	this.frameRate[0]++
+	if (this.frameRate[0]>this.frameRate[1]) { 
+		this.keyFrames[direction].push(this.keyFrames[direction].shift())//move the keyFrame that was just rendered to the end
+		this.frameRate[0]=0;		
+		};
 };
 /******************************END SPRITE FUNCTIONS ******************/
 
@@ -187,9 +206,12 @@ var render = function () {
 	//background
 	ctx.drawImage(bgImage, 0, 0);
 	
-	/**********SPRITE TESt********/
+	/**********SPRITE TEST********/
 	if (linkReady) {
 		linkPlayer.draw(100,100);
+		linkPlayer2.draw(180,100,"up");
+		linkPlayer3.draw(20,100,"down");
+		linkPlayer4.draw(260,100,"left");
 	}
 	/****************************/
 	//main player
