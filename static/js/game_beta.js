@@ -57,19 +57,11 @@ linkImage.onload = function() {
 };
 linkImage.src = "static/images/link_sprite65x65.png";
  linkPlayer = new PlayerSprite(linkImage,62,62,{"default":[[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[60,2],[120,2]],
-     																 "down":[[0,262],[60,262],[120,262],[180,262],[240,262],[300,262],[360,262],[420,262],[480,262],[540,262]],
-     																 "up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]]});
-var linkPlayer2 =  new PlayerSprite(linkImage,62,62,{"default":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[60,0],[120,0]],
-     																 "down":[[0,260],[60,260],[120,260],[180,260],[240,260],[300,260],[360,260],[420,260],[480,260],[540,260]],
-     																 "up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]]});
-var linkPlayer3 = new PlayerSprite(linkImage,62,62,{"default":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[60,0],[120,0]],
-     																 "down":[[0,260],[60,260],[120,260],[180,260],[240,260],[300,260],[360,260],[420,260],[480,260],[540,260]],
-     																 "up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]]});
-var linkPlayer4 = new PlayerSprite(linkImage,62,62,{"default":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[60,0],[120,0]],
-     																 "down":[[0,260],[60,260],[120,260],[180,260],[240,260],[300,260],[360,260],[420,260],[480,260],[540,260]],
-     																 "up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]],
-     																 "left":[[0,325],[60,325],[120,325],[180,325],[240,325],[300,325],[360,325],[420,325],[480,325],[540,325]]});
-
+     														"down":[[0,262],[60,262],[120,262],[180,262],[240,262],[300,262],[360,262],[420,262],[480,262],[540,262]],
+     														"up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]],
+     														"left":[[0,325],[60,325],[120,325],[180,325],[240,325],[300,325],[360,325],[420,325],[480,325],[540,325]],
+														"right":[[0,462],[60,462],[120,462],[180,462],[240,462],[300,462],[360,462],[420,462],[480,462],[540,462]]},
+														2);
 /*************end player images************************/
 
 
@@ -82,7 +74,7 @@ function PlayerSprite(img, width, height,keyFrames,speed){
   this.height = height;
   this.keyFrames = keyFrames;//{"up":[[x,y],[x,y]]} locations of keyframe imgs in sprite
   this.frameRate = [0];
-  this.frameRate.push(speed || 5);//speed of animation, inverse of fps, # frames to draw before moving to next keyframe or default value
+  this.frameRate[1]= speed || 5;//speed of animation, similar to fps, #times to show a frame before moving to next keyframe
 };
 
 PlayerSprite.prototype.draw = function (x,y,direction) {
@@ -115,7 +107,9 @@ var hero = {
 	height: 45,
 	width: 45,
 	imgIndex:0,//used to let other players what image you are from PLAYER_IMAGE_HOLDER
-	playerImg:PLAYER_IMAGE_HOLDER[0]//default
+	playerImg:PLAYER_IMAGE_HOLDER[0],//default
+	sprite:linkPlayer,
+	direction:"default"
 };
 
 // player object builder for ***NETWORK CONNECTED PLAYERS****
@@ -171,26 +165,30 @@ var PlacePlayer = function () {
 var update = function (modifier) {
 	var PreviousFramePosition_X = hero.x;
 	var PreviousFramePosition_Y = hero.y;
-
+	hero.direction = "default";
 	if (38 in keysDown) { // Player holding UP
 		if (hero.y >0) {//**first - check for wall collision
 			hero.y -= hero.speed * modifier;
 		}else {};//hit wall, down' allow further movement in this direction
+		hero.direction = "up";
 	}
 	if (40 in keysDown) { // Player holding DOWN
 		if (hero.y < (canvas.height-hero.height) ){//check for wall
 			hero.y += hero.speed * modifier;		
 		}else {};//hit wall, down' allow further movement in this direction
+		hero.direction = "down";
 	}
 	if (37 in keysDown) { // Player holding LEFT
 		if (hero.x > 0){//check for wall
 			hero.x -= hero.speed * modifier;	
 		}else {};//hit wall, down' allow further movement in this direction
+		hero.direction = "left";
 	}
 	if (39 in keysDown) { // Player holding RIGHT
 		if (hero.x < (canvas.width-hero.width)){
 			hero.x += hero.speed * modifier;
 		}else {};//hit wall, down' allow further movement in this direction
+		hero.direction = "right";
 	}
 	//If player has made a move, tell the server so movement can be broadcast to other connected players
 	//hero.imgIndex is broadcast so others know what image to use for you if you are new to the game.
@@ -208,15 +206,12 @@ var render = function () {
 	
 	/**********SPRITE TEST********/
 	if (linkReady) {
-		linkPlayer.draw(100,100);
-		linkPlayer2.draw(180,100,"up");
-		linkPlayer3.draw(20,100,"down");
-		linkPlayer4.draw(260,100,"left");
+		hero.sprite.draw(hero.x, hero.y,hero.direction);
 	}
 	/****************************/
 	//main player
 	if (playerImgRead) {
-	ctx.drawImage(hero.playerImg, hero.x, hero.y);
+		//ctx.drawImage(hero.playerImg, hero.x, hero.y);
 	};
 	
 	//IF Other players are connected draw them
