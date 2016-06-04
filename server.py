@@ -5,6 +5,7 @@ from flask_socketio import SocketIO
 from flask.ext.socketio import emit, send
 import time
 import json
+import random
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -28,9 +29,9 @@ def test_connect():
 @socketio.on('disconnect', namespace='/')
 def test_disconnect():
     print 'player disconnected'
-    print "remove:" 
-    emit('message',json.dumps({"rem":players[request.sid]}),broadcast=True)
-    players.pop(request.sid,None)
+    #print "remove:" 
+    #emit('message',json.dumps({"rem":players[request.sid]}),broadcast=True)
+    #players.pop(request.sid,None)
 
 @socketio.on('message')
 def handle_message(data):
@@ -47,9 +48,16 @@ def handle_message(data):
     
     #new player connected
     if dataIN.iterkeys().next() == "new":
-	#link the socketIO generated session ID, with users locally generated player ID
-	players[request.sid] = dataIN["new"]
-        
+        pass
+    #link the socketIO generated session ID, with users locally generated player ID
+    #players[request.sid] = dataIN["new"]
+    if dataIN.iterkeys().next() == "point":
+        #print "Point to: " + str(dataIN["point"])
+        #pid = dataIN["point"]["id"]
+        x = random.randint(1, 400)
+        y = random.randint(1, 500)
+        #emit('message',json.dumps({"point":{"x":x,"y":y,"id":pid}}),broadcast=True)
+        emit('message',json.dumps({"point":{"x":x,"y":y}}),broadcast=True)
 
     
 
