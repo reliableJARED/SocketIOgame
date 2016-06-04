@@ -11,7 +11,7 @@ mySocket = io.connect();//create new websocket,
 
 
 var CONNECTED_PLAYER_OBJECTS =[];//container for any connected players
-
+var PlayerLookUp = {};//used to quickly look up player in CONNECTED_PLAYER_OBJECTS
 //function for generating a random uniqueID for the player
 function randomString(length, chars) {
 	//length of result, chars used
@@ -40,7 +40,7 @@ bgImage.src = "static/images/background.png";
 /*Player Images
 *******************************************************/
 var PLAYER_IMAGE_HOLDER=[];//container for player images
-var playerImgRead = true;//toggle during image load so canvas doesnt try and render img not loaded yet
+var playerImgReady = true;//toggle during image load so canvas doesnt try and render img not loaded yet
 var heroImage = new Image();
 heroImage.src = "static/images/hero.png"
 PLAYER_IMAGE_HOLDER[0]=heroImage;
@@ -56,12 +56,34 @@ linkImage.onload = function() {
      linkReady = true;
 };
 linkImage.src = "static/images/link_sprite65x65.png";
- linkPlayer = new PlayerSprite(linkImage,62,62,{"default":[[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[60,2],[120,2]],
+//USED FOR MAIN PLAYER
+linkPlayer = new PlayerSprite(linkImage,60,60,{"default":[[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[60,2],[120,2]],
      														"down":[[0,262],[60,262],[120,262],[180,262],[240,262],[300,262],[360,262],[420,262],[480,262],[540,262]],
      														"up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]],
-     														"left":[[0,325],[60,325],[120,325],[180,325],[240,325],[300,325],[360,325],[420,325],[480,325],[540,325]],
+     														"left":[[0,330],[60,330],[120,330],[180,330],[240,330],[300,330],[360,330],[420,330],[480,330],[540,330]],
 														"right":[[0,462],[60,462],[120,462],[180,462],[240,462],[300,462],[360,462],[420,462],[480,462],[540,462]]},
 														2);
+														
+//COIN sprite
+var coinImage = new Image();
+var coinImgReady =false;
+coinImage.onload = function() {   
+     coinImgReady = true;
+};	
+coinImage.src = "static/images/coin.png";	
+
+
+// Coin object builder
+function coinObj(x, y) {
+  this.x = x;
+  this.y = y;
+  this.height = 50;
+  this.width = 50;
+  this.sprite = new PlayerSprite(coinImage,100,100,{"default":[[0,0],[100,0],[200,0],[300,0],[400,0],[500,0],[600,0],[700,0],[800,0],[900,0]]},5);								;
+  this.direction="default"
+};
+var theCoin = new coinObj(20,20);//default loc off screen until server sends loc
+console.log(theCoin);
 /*************end player images************************/
 
 
@@ -77,8 +99,10 @@ function PlayerSprite(img, width, height,keyFrames,speed){
   this.frameRate[1]= speed || 5;//speed of animation, similar to fps, #times to show a frame before moving to next keyframe
 };
 
-PlayerSprite.prototype.draw = function (x,y,direction) {
+PlayerSprite.prototype.draw = function (x,y,direction,sw,sh) {
 		var direction = direction || "default";
+		var sw = sw || this.width;
+		var sh = sh || this.height;
 	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
 	ctx.drawImage(//use global: ctx
 		this.img,//Specifies the image
@@ -88,8 +112,8 @@ PlayerSprite.prototype.draw = function (x,y,direction) {
 		this.height,//The height of the clipped image
 		x,//x coordinate where to place the image on the canvas
 		y,//y coordinate where to place the image on the canvas
-		this.width,//The width to stretch or reduce the image
-		this.height//The height to stretch or reduce the image
+		sw,//The width to stretch or reduce the image to
+		sh//The height to stretch or reduce the image to
 	);
 	this.frameRate[0]++
 	if (this.frameRate[0]>this.frameRate[1]) { 
@@ -103,6 +127,9 @@ PlayerSprite.prototype.draw = function (x,y,direction) {
 // Game objects********************
 //local player
 var hero = {
+	x:0,
+	y:0,
+	score:0,
 	speed: 128, // movement in pixels per second
 	height: 45,
 	width: 45,
@@ -117,8 +144,16 @@ function hero2(id, x, y,imgIdx) {
   this.id = id;
   this.x = x;
   this.y = y;
+  this.score = 0;
   this.imgIndex = imgIdx;
   this.playerImg = PLAYER_IMAGE_HOLDER[this.imgIndex];
+  this.sprite=new PlayerSprite(linkImage,60,60,{"default":[[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[60,2],[120,2]],
+     														"down":[[0,262],[60,262],[120,262],[180,262],[240,262],[300,262],[360,262],[420,262],[480,262],[540,262]],
+     														"up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]],
+     														"left":[[0,330],[60,330],[120,330],[180,330],[240,330],[300,330],[360,330],[420,330],[480,330],[540,330]],
+														"right":[[0,462],[60,462],[120,462],[180,462],[240,462],[300,462],[360,462],[420,462],[480,462],[540,462]]},
+														2);
+  this.direction="default"
 };
 /************end game objects*************************/
 
@@ -163,6 +198,12 @@ var PlacePlayer = function () {
 
 // Update game object positions
 var update = function (modifier) {
+
+	if (CollisionCheck(theCoin)){
+			console.log("point"); 	
+			mySocket.send(JSON.stringify({"point":{"id":UNIQUE_PLAYER_ID}}));
+	};
+	
 	var PreviousFramePosition_X = hero.x;
 	var PreviousFramePosition_Y = hero.y;
 	hero.direction = "default";
@@ -194,10 +235,22 @@ var update = function (modifier) {
 	//hero.imgIndex is broadcast so others know what image to use for you if you are new to the game.
 	//should change this to only being broadcast on connection...TODO
 	if (PreviousFramePosition_X !== hero.x || PreviousFramePosition_Y !== hero.y) {
-		mySocket.send(JSON.stringify({"mov":{"id":UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex}}));
-	}
+		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex,'d':hero.direction}}));
+	};
 };
 
+/***************** COLLISION CHECK FUNCTION *************/
+function CollisionCheck (obj,obj2) {
+	
+		obj2 = obj2 || hero;// obj2 is set to player as default if no obj2 arg passed
+		
+		//determine if collision happened.  Check x axis, then y axis
+		if ((obj2.x <= obj.x + obj.height) &&
+			(obj.x <= obj2.x + obj2.height) &&
+			(obj2.y <= obj.y + obj2.width) &&		
+			(obj.y <= obj2.y + obj.width)){return true;
+			}else{return false;};
+};
 // Draw everything
 var render = function () {
 
@@ -210,14 +263,23 @@ var render = function () {
 	}
 	/****************************/
 	//main player
-	if (playerImgRead) {
+	if (playerImgReady) {
 		//ctx.drawImage(hero.playerImg, hero.x, hero.y);
 	};
-	
+	if (coinImgReady) {
+		theCoin.sprite.draw(theCoin.x, theCoin.y,theCoin.direction,50,50);
+	};
 	//IF Other players are connected draw them
 	if (CONNECTED_PLAYER_OBJECTS.length>0) {
 		for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
-			ctx.drawImage(CONNECTED_PLAYER_OBJECTS[h].playerImg, CONNECTED_PLAYER_OBJECTS[h].x, CONNECTED_PLAYER_OBJECTS[h].y);	
+			//ctx.drawImage(CONNECTED_PLAYER_OBJECTS[h].playerImg, CONNECTED_PLAYER_OBJECTS[h].x, CONNECTED_PLAYER_OBJECTS[h].y);	
+			CONNECTED_PLAYER_OBJECTS[h].sprite.draw(CONNECTED_PLAYER_OBJECTS[h].x, CONNECTED_PLAYER_OBJECTS[h].y,CONNECTED_PLAYER_OBJECTS[h].direction);
+			/*
+			NEED SOLUTION: 
+			reset because else if the other player doesn't send new move cmd the last frame shown will loop.  Which
+			makes them look like they are running in place
+			*/			
+			//CONNECTED_PLAYER_OBJECTS[h].direction = "default";
 		};
 	};
 };
@@ -278,10 +340,30 @@ $(document).ready(function(){
 		
 			var JSONdata = JSON.parse(msg);
 			
+			if (Object.keys(JSONdata)[0] === 'point'){
+				 theCoin.x = JSONdata["point"].x;
+					theCoin.y = JSONdata["point"].y;
+			};
+			/*
+			if (Object.keys(JSONdata)[0] === 'point'){
+				console.log(JSONdata["point"]);
+				if (JSONdata["point"].id === UNIQUE_PLAYER_ID) {
+					hero.score++;
+					$('#myScore').html("My Score: "+hero.score);
+				}else{
+					theCoin.x = JSONdata["point"].x;
+					theCoin.y = JSONdata["point"].y;
+					//add 1 to players score
+					CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score++
+					//$(#playerID).html("player "+player number+ "score"+ player score)
+					$('#'+CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].id).html("Player "+(PlayerLookUp[JSONdata["point"].id]+1)+ " Score:"+CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score);//update the displayed score	
+					};			
+			};
+			*/
 
 			if (Object.keys(JSONdata)[0] === 'rem'){
 				console.log(CONNECTED_PLAYER_OBJECTS);
-				for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
+				for (var h=0;h<=CONNECTED_PLAYER_OBJECTS.length;h++) {
 					if(JSONdata.remove === CONNECTED_PLAYER_OBJECTS[h].id){
 						CONNECTED_PLAYER_OBJECTS.splice(h,1);};
 					};
@@ -297,7 +379,7 @@ $(document).ready(function(){
 					var ix = parseInt(JSONdata.avatar.ix);
 					
 					//loop through the player objects
-					for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
+					for (var h=0;h<=CONNECTED_PLAYER_OBJECTS.length;h++) {
 						
 						//when you find the right player id, update the player img
 						if(CONNECTED_PLAYER_OBJECTS[h].id === JSONdata.avatar.id ){
@@ -307,35 +389,46 @@ $(document).ready(function(){
 							main();//call again to update with the players new img
 				};
 			} 
+			
 			if(JSONdata.id != UNIQUE_PLAYER_ID) {
 			//CHeck if the message in was the echo of players move
 				var playerExists;
-
 				//if not an echo, check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
-			   for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
-					if (CONNECTED_PLAYER_OBJECTS[h].id===JSONdata.id){
-						
+				if (PlayerLookUp.hasOwnProperty(JSONdata.id)) {
 						//if you DO have this player ID already, make true
 						playerExists = true;
-						
+						console.log(PlayerLookUp[JSONdata.id]);
+						var h = PlayerLookUp[JSONdata.id];
 						// update the player object location on screen						
 						CONNECTED_PLAYER_OBJECTS[h].x = JSONdata.x;
 						CONNECTED_PLAYER_OBJECTS[h].y = JSONdata.y;
+						CONNECTED_PLAYER_OBJECTS[h].direction = JSONdata.d;
 
 					}else {
 						//if you do not this player ID already, i.e. player newly connected to game
 						playerExists=false;};
-		 		};//END for loop	
+		 		
 		 		
 		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
-		 		if (!playerExists && JSONdata.id) {
+		 		if (!playerExists) {
 		 			//builder takes (id, x,y,imgIdx), 
 		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
 		 			CONNECTED_PLAYER_OBJECTS.push(new hero2(JSONdata.id,JSONdata.x,JSONdata.y,parseInt(JSONdata.ix)));
 		 			playerExists=true;//reset
+		 			
+		 			//create score area for player
+		 			var Element = document.createElement("div");
+		 			Element.setAttribute('id',JSONdata.id);
+		 			Element.innerHTML = "Player "+(CONNECTED_PLAYER_OBJECTS.length)+" Score: 0";
+		 			document.getElementById('scoreBoard').appendChild(Element);
+		 			
+		 			//put new player in the look up object, 
+		 			//assign it's index in the CONNECTED_PLAYER_OBJECTS as value
+		 			PlayerLookUp[JSONdata.id] = CONNECTED_PLAYER_OBJECTS.length-1;
+		 			
 		 		};
-		 	 
-			}	
+			 };
+		  	
 		});
 
 	// Let's play this game!
