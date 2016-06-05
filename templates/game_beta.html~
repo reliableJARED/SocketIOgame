@@ -29,7 +29,7 @@
  		<button  class="button"  value="1" >PONY</button>
  		</div>
  		</div>
- 		<div>
+ 		<div id="scoreBoard">
  			<div id="myScore">My Score: 0</div>
  		</div>
 		<div class="row">
