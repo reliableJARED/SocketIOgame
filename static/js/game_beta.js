@@ -8,7 +8,8 @@ http://www.williammalone.com/articles/create-html5-canvas-javascript-sprite-anim
 
 //Global socket connection instance
 mySocket = io.connect();//create new websocket, 
-
+var biteSound = new Audio();
+biteSound.src = ('http://soundbible.com/mp3/Cash%20Register%20Cha%20Ching-SoundBible.com-184076484.mp3');
 
 var CONNECTED_PLAYER_OBJECTS =[];//container for any connected players
 var PlayerLookUp = {};//used to quickly look up player in CONNECTED_PLAYER_OBJECTS
@@ -55,7 +56,15 @@ var linkImage = new Image();
 linkImage.onload = function() {   
      linkReady = true;
 };
-linkImage.src = "static/images/link_sprite65x65.png";
+linkImage.src = "static/images/link_sprite_red.png";
+
+var linkPlayerRed;
+var linkReadyRed = false;
+var linkImageRed = new Image();
+linkImageRed.onload = function() {   
+     linkReadyRed = true;
+};
+linkImageRed.src = "static/images/link_sprite65x65.png";
 //USED FOR MAIN PLAYER
 linkPlayer = new PlayerSprite(linkImage,60,60,{"default":[[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[60,2],[120,2]],
      														"down":[[0,262],[60,262],[120,262],[180,262],[240,262],[300,262],[360,262],[420,262],[480,262],[540,262]],
@@ -147,7 +156,7 @@ function hero2(id, x, y,imgIdx) {
   this.score = 0;
   this.imgIndex = imgIdx;
   this.playerImg = PLAYER_IMAGE_HOLDER[this.imgIndex];
-  this.sprite=new PlayerSprite(linkImage,60,60,{"default":[[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[60,2],[120,2]],
+  this.sprite=new PlayerSprite(linkImageRed,60,60,{"default":[[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[0,2],[60,2],[120,2]],
      														"down":[[0,262],[60,262],[120,262],[180,262],[240,262],[300,262],[360,262],[420,262],[480,262],[540,262]],
      														"up":[[0,390],[60,390],[120,390],[180,390],[240,390],[300,390],[360,390],[420,390],[480,390],[540,390]],
      														"left":[[0,330],[60,330],[120,330],[180,330],[240,330],[300,330],[360,330],[420,330],[480,330],[540,330]],
@@ -200,6 +209,8 @@ var PlacePlayer = function () {
 var update = function (modifier) {
 
 	if (CollisionCheck(theCoin)){
+				biteSound.currentTime=0;
+		biteSound.play();
 			console.log("point"); 	
 			mySocket.send(JSON.stringify({"point":{"id":UNIQUE_PLAYER_ID}}));
 	};
@@ -344,22 +355,21 @@ $(document).ready(function(){
 				 theCoin.x = JSONdata["point"].x;
 					theCoin.y = JSONdata["point"].y;
 			};
-			/*
+			
 			if (Object.keys(JSONdata)[0] === 'point'){
-				console.log(JSONdata["point"]);
-				if (JSONdata["point"].id === UNIQUE_PLAYER_ID) {
+				theCoin.x = JSONdata["point"].x;
+				theCoin.y = JSONdata["point"].y;
+				if (JSONdata["point"].id===UNIQUE_PLAYER_ID){
 					hero.score++;
 					$('#myScore').html("My Score: "+hero.score);
-				}else{
-					theCoin.x = JSONdata["point"].x;
-					theCoin.y = JSONdata["point"].y;
-					//add 1 to players score
-					CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score++
-					//$(#playerID).html("player "+player number+ "score"+ player score)
-					$('#'+CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].id).html("Player "+(PlayerLookUp[JSONdata["point"].id]+1)+ " Score:"+CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score);//update the displayed score	
-					};			
+				}else {
+						//add 1 to players score
+						CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score++
+						//$(#playerID).html("player "+player number+ "score"+ player score)
+						$('#'+CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].id).html("Player "+(PlayerLookUp[JSONdata["point"].id]+1)+ " Score:"+CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score);//update the displayed score	
+					};
 			};
-			*/
+			
 
 			if (Object.keys(JSONdata)[0] === 'rem'){
 				console.log(CONNECTED_PLAYER_OBJECTS);
@@ -392,7 +402,7 @@ $(document).ready(function(){
 			
 			if(JSONdata.id != UNIQUE_PLAYER_ID) {
 			//CHeck if the message in was the echo of players move
-				var playerExists;
+				var playerExists = false;
 				//if not an echo, check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
 				if (PlayerLookUp.hasOwnProperty(JSONdata.id)) {
 						//if you DO have this player ID already, make true
@@ -410,7 +420,9 @@ $(document).ready(function(){
 		 		
 		 		
 		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
-		 		if (!playerExists) {
+		 		if (!playerExists && JSONdata.id) {
+		 			console.log("creatingPlayer");
+		 			console.log(JSONdata);
 		 			//builder takes (id, x,y,imgIdx), 
 		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
 		 			CONNECTED_PLAYER_OBJECTS.push(new hero2(JSONdata.id,JSONdata.x,JSONdata.y,parseInt(JSONdata.ix)));
@@ -419,6 +431,7 @@ $(document).ready(function(){
 		 			//create score area for player
 		 			var Element = document.createElement("div");
 		 			Element.setAttribute('id',JSONdata.id);
+		 			Element.setAttribute('class',"score");
 		 			Element.innerHTML = "Player "+(CONNECTED_PLAYER_OBJECTS.length)+" Score: 0";
 		 			document.getElementById('scoreBoard').appendChild(Element);
 		 			

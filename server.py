@@ -6,14 +6,15 @@ from flask.ext.socketio import emit, send
 import time
 import json
 import random
+import threading
 
+
+PlayerWhoScored = 'none'
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
-           		
-#player ID holder dictionary
-players = {}
 
+    
 @app.route('/')
 def index():
     print "new player entering game"
@@ -36,8 +37,10 @@ def test_disconnect():
 @socketio.on('message')
 def handle_message(data):
     dataIN = json.loads(data)
-    print dataIN
     specialKey = "mov"
+    global PlayerWhoScored
+
+    
     #player is broadcasting move
     if dataIN.iterkeys().next() == "mov":
 	emit('message',json.dumps(dataIN[specialKey]),broadcast=True)
@@ -49,16 +52,12 @@ def handle_message(data):
     #new player connected
     if dataIN.iterkeys().next() == "new":
         pass
-    #link the socketIO generated session ID, with users locally generated player ID
-    #players[request.sid] = dataIN["new"]
-    if dataIN.iterkeys().next() == "point":
-        #print "Point to: " + str(dataIN["point"])
-        #pid = dataIN["point"]["id"]
-        x = random.randint(1, 400)
-        y = random.randint(1, 500)
-        #emit('message',json.dumps({"point":{"x":x,"y":y,"id":pid}}),broadcast=True)
-        emit('message',json.dumps({"point":{"x":x,"y":y}}),broadcast=True)
 
+    if dataIN.iterkeys().next() == "point":
+        pid = dataIN["point"]["id"]
+        x = random.randint(1, 350)
+        y = random.randint(1, 450)
+        emit('message',json.dumps({"point":{"x":x,"y":y,"id":pid}}),broadcast=True)
     
 
 if __name__ == '__main__':
