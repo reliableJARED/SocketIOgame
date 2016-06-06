@@ -30,26 +30,12 @@
  		</div>
  		</div>
  		<div id="scoreBoard">
- 			<div id="myScore">My Score: 0</div>
+ 			<div class="score" id="myScore" >My Score: 0</div>
  		</div>
 		<div class="row">
 		<div id="canvasHolder"></div>
 		</div>
-		<div class="row">
-		<div class="sm-col-4 dpad" id="MoveUpLeft" value="38" ></div>
-		<button class="sm-col-4 dpad" id="MoveUp" value="38" >UP</button>
-		<div class="sm-col-4 dpad" id="MoveUpRight" value="38" ></div>
-		</div>
-		<div class="row">
-		<button class="sm-col-4 dpad" id="MoveLeft" value="37" >LEFT</button> 
-		<div class="sm-col-4 dpad"></div>
-		<button class="sm-col-4 dpad" id="MoveRight" value="39">RIGHT</button>
-		</div>
-		<div class="row">
-		<div class="sm-col-4 dpad"></div>
-		<button class="sm-col-4 dpad" id="MoveDown" value="40">DOWN</button>
-		<div class="sm-col-4 dpad"></div>
-		</div>
+		
 		</div>
 		<!-- JS manipulating canvas must be below the actual canvas element -->
 		<script type="text/javascript" src="static/js/game_beta.js"></script>
