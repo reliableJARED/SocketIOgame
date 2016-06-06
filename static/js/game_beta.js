@@ -95,10 +95,11 @@ function Sprite(img,height,width,keyFrames){
   this.img = img;
   this.width = width;
   this.height = height;
-  this.frameCount = 1;//used to track what keyFrame you're on.  Multiplier for width or height
+  this.frameCount = 1;//used to track what keyFrame you're on.  Multiplier for width or height DON"T USE 0
   this.rateCount = 0;//used to track speed of animation
+  this.current = 'default';//used to trach what keyFrame is currently being used
   this.keyFrames = keyFrames;
-  /*
+  /****** keyFrames ***********
   {"up":{x,y,frames,layout,frameRate}} 
   key: in this example "up" specifies to use associated sprite rules
   x:upper left x coord of corner on canvas
@@ -110,12 +111,20 @@ function Sprite(img,height,width,keyFrames){
 };
 
 Sprite.prototype.draw = function (x,y,direction,sx,sy) {
-		var direction = direction || "default";
-		var sx = sx || this.width;
-		var sy = sy || this.height
+
+		var sx = sx || this.width; //optional img stretch/shrink args
+		var sy = sy || this.height;//optional img stretch/shrink args
+		
+		//test if still working on the same set of keyFrames, else reset counters
+		if (this.current !== direction){
+			this.current = direction;
+			this.rateCount=0;//reset
+			this.frameCount = 1;//reset	repeat sprite from beginning
+		};
+		
 		var shiftX=0; 
 		var shiftY=0;
-		this.rateCount++;
+		
 		if(this.keyFrames[direction].layout==="vert"){
 			shiftY=this.height*this.frameCount;
 		}else{shiftX=this.width*this.frameCount;};
@@ -132,10 +141,11 @@ Sprite.prototype.draw = function (x,y,direction,sx,sy) {
 		sx,//The width to stretch or reduce the image
 		sy//The height to stretch or reduce the image
 	);
-	if(this.keyFrames[direction].frameRate<this.rateCount){
-		this.rateCount=0;//reset
+	this.rateCount++;
+	if(this.keyFrames[direction].frameRate<=this.rateCount){
+		this.rateCount = 0;//reset
 		this.frameCount++;//move to next frame
-		if (this.frameCount>this.keyFrames[direction].frames) { 
+		if (this.frameCount>=this.keyFrames[direction].frames) { 
 			this.frameCount = 1;//reset	repeat sprite from beginning
 	}}
 };
@@ -160,7 +170,7 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
   this.imgIndex = imgIdx;
   this.playerImg = PLAYER_IMAGE_HOLDER[this.imgIndex];
   this.sprite = new Sprite(this.playerImg,this.height,this.width,
-		{"default":{"x":0,"y":2,"frames":1,"layout":"horz","frameRate":5},
+		{"default":{"x":0,"y":2,"frames":1,"layout":"horz","frameRate":20},
 		"down":{"x":0,"y":262,"frames":10,"layout":"horz","frameRate":5},
 		"up":{"x":0,"y":390,"frames":10,"layout":"horz","frameRate":5},
 		 "right":{"x":0,"y":462,"frames":10,"layout":"horz","frameRate":5},
@@ -191,6 +201,7 @@ var PlacePlayer = function () {
 
 // Update game object positions
 var update = function (modifier) {
+	hero.direction = "default";
 
 	//Test for collision with the coin, if yes tell server, play sound
 	if (CollisionCheck(theCoin)){
@@ -229,7 +240,6 @@ var update = function (modifier) {
 		hero.direction = "right";
 	}
 	if (Object.keys(keysDown).length<1){
-		hero.direction = "default";
 		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex,'d':hero.direction}}));
 	}
 	//If player has made a move, tell the server so movement can be broadcast to other connected players
@@ -267,8 +277,8 @@ var render = function () {
 			for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
 				CONNECTED_PLAYER_OBJECTS[h].sprite.draw(CONNECTED_PLAYER_OBJECTS[h].x, CONNECTED_PLAYER_OBJECTS[h].y,CONNECTED_PLAYER_OBJECTS[h].direction);
 
+				};
 		};
-	};
 	}
 	/****************************/
 
@@ -343,17 +353,19 @@ $(document).ready(function(){
 
 					}else {
 						//if you do not this player ID already, i.e. player newly connected to game
-						playerExists=false;};
+						playerExists=false;
+						createAplayer();};
 		 		
 		 		
 		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
-		 		if (!playerExists && JSONdata.id) {
+				//(!playerExists && JSONdata.id)
+		 		function createAplayer() {
 		 			console.log("creatingPlayer");
 		 			console.log(JSONdata);
 		 			//builder takes (id, x,y,imgIdx), 
 		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
 		 			//NOTE: HARD CODED WIDTH, HEIGHT of 60px !!!!!!!!
-		 			CONNECTED_PLAYER_OBJECTS.push(new PlayerObjBuilder(JSONdata.id,JSONdata.x,JSONdata.y,60,60,parseInt(JSONdata.ix)));
+		 			CONNECTED_PLAYER_OBJECTS.push(new PlayerObjBuilder(JSONdata.id,JSONdata.x,JSONdata.y,60,60,1));//parseInt(JSONdata.ix)));
 		 			playerExists=true;//reset
 		 			
 		 			//create score area for player
