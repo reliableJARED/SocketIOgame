@@ -15,15 +15,10 @@ app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
 
 global coinCount
-coinCount = [1,20,20]#count,x,y
+coinCount = [0,20,20]#count,x,y
 global playersPlaying
 playersPlaying = 0
-def coinGen():
-    global coinCount
-    coinCount[0] = coinCount[0]+1
-    coinCount[1] = random.randint(1, 350)
-    coinCount[2] = random.randint(1, 450)
-    
+ 
 @app.route('/')
 def index():
     print "new player entering game"
@@ -61,8 +56,16 @@ def handle_message(data):
     
     #point scored
     if dataIN.iterkeys().next() == "point":
-        coinGen()
-        emit('message',json.dumps({"point":{"x":coinCount[1],"y":coinCount[2],"id":pid,"cid":coinCount[0]}}),broadcast=True)
+        print "cid: " + str(coinCount[0])
+        print "player sent cid: "+ str(dataIN["point"]["cid"])
+        if int(dataIN["point"]["cid"]) == int(coinCount[0]):
+            coinCount[0] = coinCount[0]+1
+            pid = dataIN["point"]["id"]
+            x =random.randint(1, 350)
+            coinCount[1] = x
+            y = random.randint(1, 450)
+            coinCount[2] = y
+            emit('message',json.dumps({"point":{"x":x,"y":y,"id":pid,"cid":coinCount[0]}}),broadcast=True)
         '''
         print "POINT"
         print coinCount

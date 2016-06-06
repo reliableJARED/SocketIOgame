@@ -81,7 +81,7 @@ function coinObj(x,y) {
   this.sprite = new Sprite(coinImage,this.height,this.width,
 		{"default":{"x":0,"y":0,"frames":9,"layout":"horz","frameRate":2}});								;
   this.direction="default";
-  this.cid = false;//server assigned coin id
+  this.cid = 0;//server assigned coin id
 };
 var theCoin = new coinObj(-100,-100);//default loc off screen until server sends loc
 
@@ -111,7 +111,7 @@ function Sprite(img,height,width,keyFrames){
 };
 
 Sprite.prototype.draw = function (x,y,direction,sx,sy) {
-
+		var direction = direction || 'default';
 		var sx = sx || this.width; //optional img stretch/shrink args
 		var sy = sy || this.height;//optional img stretch/shrink args
 		
@@ -207,7 +207,8 @@ var update = function (modifier) {
 	if (CollisionCheck(theCoin)){
 			ChaChingSound.currentTime=0;
 			ChaChingSound.play();
-			console.log("point"); 	
+			console.log("point"); 
+			console.log(theCoin.cid);
 			mySocket.send(JSON.stringify({"point":{"id":UNIQUE_PLAYER_ID,"cid":theCoin.cid}}));
 	};
 	
@@ -240,6 +241,7 @@ var update = function (modifier) {
 		hero.direction = "right";
 	}
 	if (Object.keys(keysDown).length<1){
+		/* THIS SHOULDN"T TRIGGER EVERY FRAME */
 		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex,'d':hero.direction}}));
 	}
 	//If player has made a move, tell the server so movement can be broadcast to other connected players
@@ -283,7 +285,7 @@ var render = function () {
 	/****************************/
 
 	if (coinImgReady) {
-		theCoin.sprite.draw(theCoin.x, theCoin.y,theCoin.direction,35,35);
+		theCoin.sprite.draw(theCoin.x, theCoin.y,theCoin.direction,50,50);
 	};
 
 };
@@ -301,6 +303,30 @@ var main = function () {
 	// repeat
 	requestAnimationFrame(main);
 };
+
+//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
+
+function createAplayer(JSONdata) {
+		 			console.log("creatingPlayer");
+		 			console.log(JSONdata);
+		 			//builder takes (id, x,y,imgIdx), 
+		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
+		 			//NOTE: HARD CODED WIDTH, HEIGHT of 60px !!!!!!!!
+		 			CONNECTED_PLAYER_OBJECTS.push(new PlayerObjBuilder(JSONdata.id,JSONdata.x,JSONdata.y,60,60,1));//parseInt(JSONdata.ix)));
+		 			playerExists=true;//reset
+		 			
+		 			//create score area for player
+		 			var Element = document.createElement("div");
+		 			Element.setAttribute('id',JSONdata.id);
+		 			Element.setAttribute('class',"score");
+		 			Element.innerHTML = "Player "+(CONNECTED_PLAYER_OBJECTS.length)+" Score: 0";
+		 			document.getElementById('scoreBoard').appendChild(Element);
+		 			
+		 			//put new player in the look up object, 
+		 			//assign it's index in the CONNECTED_PLAYER_OBJECTS as value
+		 			PlayerLookUp[JSONdata.id] = CONNECTED_PLAYER_OBJECTS.length-1;
+		 			
+		 };
 
 // Cross-browser support for requestAnimationFrame
 var w = window;
@@ -336,12 +362,12 @@ $(document).ready(function(){
 			var JSONdata = JSON.parse(msg);
 			/*
 			99% of the time inbound messages are x,y movements from other players
-			player movements come in one of the keys = 'id'
+			player movements come in with one of the keys = 'id'
+			check that the msg has an ID and that the id isn't the local players ID
 			*/
-			if(JSONdata.id != UNIQUE_PLAYER_ID) {
-			//CHeck if the message in was the echo of players move
+			if(JSONdata.id != UNIQUE_PLAYER_ID && JSONdata.id) {
 				var playerExists = false;
-				//if not an echo, check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
+				//check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
 				if (PlayerLookUp.hasOwnProperty(JSONdata.id)) {
 						//if you DO have this player ID already, make true
 						playerExists = true;
@@ -351,35 +377,13 @@ $(document).ready(function(){
 						CONNECTED_PLAYER_OBJECTS[h].y = JSONdata.y;
 						CONNECTED_PLAYER_OBJECTS[h].direction = JSONdata.d;
 
-					}else {
-						//if you do not this player ID already, i.e. player newly connected to game
-						playerExists=false;
-						createAplayer();};
-		 		
-		 		
-		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
-				//(!playerExists && JSONdata.id)
-		 		function createAplayer() {
-		 			console.log("creatingPlayer");
-		 			console.log(JSONdata);
-		 			//builder takes (id, x,y,imgIdx), 
-		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
-		 			//NOTE: HARD CODED WIDTH, HEIGHT of 60px !!!!!!!!
-		 			CONNECTED_PLAYER_OBJECTS.push(new PlayerObjBuilder(JSONdata.id,JSONdata.x,JSONdata.y,60,60,1));//parseInt(JSONdata.ix)));
-		 			playerExists=true;//reset
-		 			
-		 			//create score area for player
-		 			var Element = document.createElement("div");
-		 			Element.setAttribute('id',JSONdata.id);
-		 			Element.setAttribute('class',"score");
-		 			Element.innerHTML = "Player "+(CONNECTED_PLAYER_OBJECTS.length)+" Score: 0";
-		 			document.getElementById('scoreBoard').appendChild(Element);
-		 			
-		 			//put new player in the look up object, 
-		 			//assign it's index in the CONNECTED_PLAYER_OBJECTS as value
-		 			PlayerLookUp[JSONdata.id] = CONNECTED_PLAYER_OBJECTS.length-1;
-		 			
-		 		};
+					}
+				else if(!playerExists){
+						//if you do not have this player ID already, create a player object for this ID
+						PlayerLookUp[JSONdata.id] = CONNECTED_PLAYER_OBJECTS.length;
+						createAplayer(JSONdata);
+						playerExists = true;
+					};
 			 };
 			/*
 			NON MOVEMENT TYPE INBOUND MESSAGES
@@ -388,12 +392,17 @@ $(document).ready(function(){
 				if (Object.keys(JSONdata)[0] === 'coin'){
 					theCoin.x = JSONdata["coin"].x;
 					theCoin.y = JSONdata["coin"].y;
-					theCoin.id = JSONdata["coin"].cid;};
-				
+					theCoin.cid = JSONdata["coin"].cid;};
+			
+			if (Object.keys(JSONdata)[0] === 'coin'){
+					theCoin.x = JSONdata["coin"].x;
+					theCoin.y = JSONdata["coin"].y;
+					theCoin.cid = JSONdata["coin"].cid;}
+					
 				if (Object.keys(JSONdata)[0] === 'point'){
 					theCoin.x = JSONdata["point"].x;
 					theCoin.y = JSONdata["point"].y;
-					theCoin.id = JSONdata["point"].cid;
+					theCoin.cid = JSONdata["point"].cid;
 					if (JSONdata["point"].id===UNIQUE_PLAYER_ID){
 						hero.score++;
 						$('#myScore').html("My Score: "+hero.score);
