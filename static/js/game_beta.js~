@@ -69,21 +69,7 @@ playerRed.onload = function () {
 playerRed.src="static/images/link_sprite_red.png";
 PLAYER_IMAGE_HOLDER[1] = playerRed;
 
-
-													
-
-// Coin object builder
-function coinObj(x,y) {
-  this.x = x;
-  this.y = y;
-  this.height = 100;
-  this.width = 100;
-  this.sprite = new Sprite(coinImage,this.height,this.width,
-		{"default":{"x":0,"y":0,"frames":9,"layout":"horz","frameRate":2}});								;
-  this.direction="default";
-  this.cid = false;//server assigned coin id
-};
-var theCoin = new coinObj(-100,-100);//default loc off screen until server sends loc
+									
 
 /*************end images************************/
 
@@ -95,10 +81,11 @@ function Sprite(img,height,width,keyFrames){
   this.img = img;
   this.width = width;
   this.height = height;
-  this.frameCount = 1;//used to track what keyFrame you're on.  Multiplier for width or height
+  this.frameCount = 1;//used to track what keyFrame you're on.  Multiplier for width or height DON"T USE 0
   this.rateCount = 0;//used to track speed of animation
+  this.current = 'default';//used to trach what keyFrame is currently being used
   this.keyFrames = keyFrames;
-  /*
+  /****** keyFrames ***********
   {"up":{x,y,frames,layout,frameRate}} 
   key: in this example "up" specifies to use associated sprite rules
   x:upper left x coord of corner on canvas
@@ -109,11 +96,21 @@ function Sprite(img,height,width,keyFrames){
   */
 };
 
-Sprite.prototype.draw = function (x,y,direction) {
-		var direction = direction || "default";
-		var shiftX=0; 
-		var shiftY=0;
-		this.rateCount++;
+Sprite.prototype.draw = function (x,y,direction,sx,sy) {
+		var direction = direction || 'default';
+		var sx = sx || this.width; //optional img stretch/shrink args
+		var sy = sy || this.height;//optional img stretch/shrink args
+		
+		//test if still working on the same set of keyFrames, else reset counters
+		if (this.current !== direction){
+			this.current = direction;
+			this.rateCount=0;//reset
+			this.frameCount = 1;//reset	repeat sprite from beginning
+		};
+		
+		var shiftX=0; //used to move along sprite sheet horizontal
+		var shiftY=0;//used to move along sprite sheet vertical
+		
 		if(this.keyFrames[direction].layout==="vert"){
 			shiftY=this.height*this.frameCount;
 		}else{shiftX=this.width*this.frameCount;};
@@ -127,17 +124,63 @@ Sprite.prototype.draw = function (x,y,direction) {
 		this.height,//The height of the keyFrame image
 		x,//x coordinate where to place the image on the canvas
 		y,//y coordinate where to place the image on the canvas
-		this.width,//The width to stretch or reduce the image
-		this.height//The height to stretch or reduce the image
+		sx,//The width to stretch or reduce the image
+		sy//The height to stretch or reduce the image
 	);
-	if(this.keyFrames[direction].frameRate<this.rateCount){
-		this.rateCount=0;//reset
+	this.rateCount++;
+	if(this.keyFrames[direction].frameRate<=this.rateCount){
+		this.rateCount = 0;//reset
 		this.frameCount++;//move to next frame
-		if (this.frameCount>this.keyFrames[direction].frames) { 
+		if (this.frameCount>=this.keyFrames[direction].frames) { 
 			this.frameCount = 1;//reset	repeat sprite from beginning
 	}}
 };
-/******************************END SPRITE FUNCTIONS ******************/
+
+function CoinSprite(img,height,width,totalFrames,frameRate,DeltaWidth){
+  this.img = img;//the coin image
+  this.width = width;//width of coin img in sprite in pixels used in collision detection
+  this.height = height;//height of coin img in sprite in pixels used in collision detection
+  this.w = this.width;//original width property holder, used when rendered size of coin changes and collision needs to change
+  this.h = this.height;//original height property holder, used when rendered size of coin changes and collision needs to change
+  this.totalFrames = totalFrames;//total number of frames in the sprite sheet
+  this.frameCount = 0;//used to track what frame you're on
+  this.frameRate = frameRate;
+  this.frameRateCount = 0;//used to track animation speed
+  this.DeltaWidth = DeltaWidth;//[100,80,60,40]array used to adjust the width used in collision detection as coin spins, units pixels.
+};
+CoinSprite.prototype.draw = function(x,y,sx,sy){
+	var sx = sx || this.width;//apparent width of coin when rendered, in pixels
+	var sy = sy || this.height;//apparent height of coin when rendered, in pixels
+	
+	//if the rendered size of the coin is different than the height/width of coin need to adjust
+	//so that collision detection is correct.  collision detection relies on this.width and this.height
+	if (sx !== this.width || sy !== this.height){
+		this.width = sx*(sx/(this.DeltaWidth[this.frameCount]));
+		this.height = sy;
+	};
+	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+	ctx.drawImage(//use global: ctx
+		this.img,//Specifies the image
+		(this.w*this.frameCount),//The x coordinate top left corner of frame on sprite sheet
+		0,//The y coordinate top left corner of frame on sprite sheet
+		this.w,//The width of the keyFrame image
+		this.h,//The height of the keyFrame image
+		x,//x coordinate where to place the image on the canvas
+		y,//y coordinate where to place the image on the canvas
+		sx,//The width to stretch or reduce the image
+		sy//The height to stretch or reduce the image
+	);
+	this.frameRateCount++;
+	if (this.frameRateCount>=this.frameRate) {
+		this.frameRateCount =  0;//reset
+		this.frameCount++;//move to next frame
+			if (this.frameCount>=this.totalFrames){
+				this.frameCount = 0;//reset
+			};
+	};
+	
+}
+/******************************END SPRITE CLASSES ******************/
 
 
 
@@ -158,13 +201,27 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
   this.imgIndex = imgIdx;
   this.playerImg = PLAYER_IMAGE_HOLDER[this.imgIndex];
   this.sprite = new Sprite(this.playerImg,this.height,this.width,
-		{"default":{"x":0,"y":2,"frames":1,"layout":"horz","frameRate":5},
+		{"default":{"x":0,"y":2,"frames":1,"layout":"horz","frameRate":20},
 		"down":{"x":0,"y":262,"frames":10,"layout":"horz","frameRate":5},
 		"up":{"x":0,"y":390,"frames":10,"layout":"horz","frameRate":5},
 		 "right":{"x":0,"y":462,"frames":10,"layout":"horz","frameRate":5},
 		 "left":{"x":0,"y":330,"frames":10,"layout":"horz","frameRate":5}});
   this.direction="default"
 };
+
+// Coin object builder
+function coinObj(img,x,y,h,w) {
+  this.img = img;
+  this.x = x;
+  this.y = y;
+  this.height = h;
+  this.width = w;
+  this.sprite = new CoinSprite(this.img,this.height,this.width,10,4,[90,70,50,20,10,20,50,70,90,100]);
+  this.direction="default";
+  this.cid = 0;//server assigned coin id
+};
+var theCoin = new coinObj(coinImage,-100,-100,100,100);//default loc off screen until server sends loc
+console.log(theCoin);
 /************end game objects*************************/
 
 /****INPUTS******/
@@ -189,12 +246,17 @@ var PlacePlayer = function () {
 
 // Update game object positions
 var update = function (modifier) {
+	
 
 	//Test for collision with the coin, if yes tell server, play sound
+	//update coin size based on what is being shown
+	//theCoin.width = theCoin.sprite.DeltaWidth[theCoin.sprite.frameCount];
+	
 	if (CollisionCheck(theCoin)){
 			ChaChingSound.currentTime=0;
 			ChaChingSound.play();
-			console.log("point"); 	
+			console.log("point"); 
+			console.log(theCoin.cid);
 			mySocket.send(JSON.stringify({"point":{"id":UNIQUE_PLAYER_ID,"cid":theCoin.cid}}));
 	};
 	
@@ -226,8 +288,9 @@ var update = function (modifier) {
 		}else {};//hit wall, down' allow further movement in this direction
 		hero.direction = "right";
 	}
-	if (Object.keys(keysDown).length<1){
+	if (Object.keys(keysDown).length<1 && hero.direction !== "default"){
 		hero.direction = "default";
+		/* THIS SHOULDN"T TRIGGER EVERY FRAME */
 		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex,'d':hero.direction}}));
 	}
 	//If player has made a move, tell the server so movement can be broadcast to other connected players
@@ -240,7 +303,7 @@ var update = function (modifier) {
 
 /***************** COLLISION CHECK FUNCTION *************/
 function CollisionCheck (obj,obj2) {
-	
+
 		obj2 = obj2 || hero;// obj2 is set to player as default if no obj2 arg passed
 		
 		//determine if collision happened.  Check x axis, then y axis
@@ -265,13 +328,13 @@ var render = function () {
 			for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
 				CONNECTED_PLAYER_OBJECTS[h].sprite.draw(CONNECTED_PLAYER_OBJECTS[h].x, CONNECTED_PLAYER_OBJECTS[h].y,CONNECTED_PLAYER_OBJECTS[h].direction);
 
+				};
 		};
-	};
 	}
 	/****************************/
 
 	if (coinImgReady) {
-		theCoin.sprite.draw(theCoin.x, theCoin.y,theCoin.direction,35,35);
+		theCoin.sprite.draw(theCoin.x, theCoin.y,90,90);
 	};
 
 };
@@ -289,6 +352,30 @@ var main = function () {
 	// repeat
 	requestAnimationFrame(main);
 };
+
+//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
+
+function createAplayer(JSONdata) {
+		 			console.log("creatingPlayer");
+		 			console.log(JSONdata);
+		 			//builder takes (id, x,y,imgIdx), 
+		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
+		 			//NOTE: HARD CODED WIDTH, HEIGHT of 60px !!!!!!!!
+		 			CONNECTED_PLAYER_OBJECTS.push(new PlayerObjBuilder(JSONdata.id,JSONdata.x,JSONdata.y,60,60,1));//parseInt(JSONdata.ix)));
+		 			playerExists=true;//reset
+		 			
+		 			//create score area for player
+		 			var Element = document.createElement("div");
+		 			Element.setAttribute('id',JSONdata.id);
+		 			Element.setAttribute('class',"score");
+		 			Element.innerHTML = "Player "+(CONNECTED_PLAYER_OBJECTS.length)+" Score: 0";
+		 			document.getElementById('scoreBoard').appendChild(Element);
+		 			
+		 			//put new player in the look up object, 
+		 			//assign it's index in the CONNECTED_PLAYER_OBJECTS as value
+		 			PlayerLookUp[JSONdata.id] = CONNECTED_PLAYER_OBJECTS.length-1;
+		 			
+		 };
 
 // Cross-browser support for requestAnimationFrame
 var w = window;
@@ -324,12 +411,12 @@ $(document).ready(function(){
 			var JSONdata = JSON.parse(msg);
 			/*
 			99% of the time inbound messages are x,y movements from other players
-			player movements come in one of the keys = 'id'
+			player movements come in with one of the keys = 'id'
+			check that the msg has an ID and that the id isn't the local players ID
 			*/
-			if(JSONdata.id != UNIQUE_PLAYER_ID) {
-			//CHeck if the message in was the echo of players move
+			if(JSONdata.id != UNIQUE_PLAYER_ID && JSONdata.id) {
 				var playerExists = false;
-				//if not an echo, check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
+				//check if you have the player ID already in your CONNECTED_PLAYER_OBJECTS
 				if (PlayerLookUp.hasOwnProperty(JSONdata.id)) {
 						//if you DO have this player ID already, make true
 						playerExists = true;
@@ -339,33 +426,13 @@ $(document).ready(function(){
 						CONNECTED_PLAYER_OBJECTS[h].y = JSONdata.y;
 						CONNECTED_PLAYER_OBJECTS[h].direction = JSONdata.d;
 
-					}else {
-						//if you do not this player ID already, i.e. player newly connected to game
-						playerExists=false;};
-		 		
-		 		
-		 		//create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
-		 		if (!playerExists && JSONdata.id) {
-		 			console.log("creatingPlayer");
-		 			console.log(JSONdata);
-		 			//builder takes (id, x,y,imgIdx), 
-		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
-		 			//NOTE: HARD CODED WIDTH, HEIGHT of 60px !!!!!!!!
-		 			CONNECTED_PLAYER_OBJECTS.push(new PlayerObjBuilder(JSONdata.id,JSONdata.x,JSONdata.y,60,60,parseInt(JSONdata.ix)));
-		 			playerExists=true;//reset
-		 			
-		 			//create score area for player
-		 			var Element = document.createElement("div");
-		 			Element.setAttribute('id',JSONdata.id);
-		 			Element.setAttribute('class',"score");
-		 			Element.innerHTML = "Player "+(CONNECTED_PLAYER_OBJECTS.length)+" Score: 0";
-		 			document.getElementById('scoreBoard').appendChild(Element);
-		 			
-		 			//put new player in the look up object, 
-		 			//assign it's index in the CONNECTED_PLAYER_OBJECTS as value
-		 			PlayerLookUp[JSONdata.id] = CONNECTED_PLAYER_OBJECTS.length-1;
-		 			
-		 		};
+					}
+				else if(!playerExists){
+						//if you do not have this player ID already, create a player object for this ID
+						PlayerLookUp[JSONdata.id] = CONNECTED_PLAYER_OBJECTS.length;
+						createAplayer(JSONdata);
+						playerExists = true;
+					};
 			 };
 			/*
 			NON MOVEMENT TYPE INBOUND MESSAGES
@@ -374,12 +441,17 @@ $(document).ready(function(){
 				if (Object.keys(JSONdata)[0] === 'coin'){
 					theCoin.x = JSONdata["coin"].x;
 					theCoin.y = JSONdata["coin"].y;
-					theCoin.id = JSONdata["coin"].cid;};
-				
+					theCoin.cid = JSONdata["coin"].cid;};
+			
+			if (Object.keys(JSONdata)[0] === 'coin'){
+					theCoin.x = JSONdata["coin"].x;
+					theCoin.y = JSONdata["coin"].y;
+					theCoin.cid = JSONdata["coin"].cid;}
+					
 				if (Object.keys(JSONdata)[0] === 'point'){
 					theCoin.x = JSONdata["point"].x;
 					theCoin.y = JSONdata["point"].y;
-					theCoin.id = JSONdata["point"].cid;
+					theCoin.cid = JSONdata["point"].cid;
 					if (JSONdata["point"].id===UNIQUE_PLAYER_ID){
 						hero.score++;
 						$('#myScore').html("My Score: "+hero.score);

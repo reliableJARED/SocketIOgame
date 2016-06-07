@@ -69,19 +69,7 @@ playerRed.onload = function () {
 playerRed.src="static/images/link_sprite_red.png";
 PLAYER_IMAGE_HOLDER[1] = playerRed;
 
-										
-// Coin object builder
-function coinObj(x,y) {
-  this.x = x;
-  this.y = y;
-  this.height = 100;
-  this.width = 100;
-  this.sprite = new Sprite(coinImage,this.height,this.width,
-		{"default":{"x":0,"y":0,"frames":9,"layout":"horz","frameRate":2}});								;
-  this.direction="default";
-  this.cid = 0;//server assigned coin id
-};
-var theCoin = new coinObj(-100,-100);//default loc off screen until server sends loc
+									
 
 /*************end images************************/
 
@@ -155,25 +143,26 @@ function CoinSprite(img,height,width,totalFrames,frameRate,DeltaWidth){
   this.w = this.width;//original width property holder, used when rendered size of coin changes and collision needs to change
   this.h = this.height;//original height property holder, used when rendered size of coin changes and collision needs to change
   this.totalFrames = totalFrames;//total number of frames in the sprite sheet
-  this.frameRate = frameRate;
   this.frameCount = 0;//used to track what frame you're on
-  this.DeltaWidth = 0;//used to adjust the width used in collision detection as coin spins.
-}
-CoinSprite.prototype.draw(x,y,sx,sy){
-	var sx = sx || this.width;//apparant width of coin when rendered, in pixels
-	var sy = sy || this.height;//apparant height of coin when rendered, in pixels
+  this.frameRate = frameRate;
+  this.frameRateCount = 0;//used to track animation speed
+  this.DeltaWidth = DeltaWidth;//[100,80,60,40]array used to adjust the width used in collision detection as coin spins, units pixels.
+};
+CoinSprite.prototype.draw = function(x,y,sx,sy){
+	var sx = sx || this.width;//apparent width of coin when rendered, in pixels
+	var sy = sy || this.height;//apparent height of coin when rendered, in pixels
 	
 	//if the rendered size of the coin is different than the height/width of coin need to adjust
 	//so that collision detection is correct.  collision detection relies on this.width and this.height
 	if (sx !== this.width || sy !== this.height){
-		this.width = sx;
+		this.width = sx*(sx/(this.DeltaWidth[this.frameCount]));
 		this.height = sy;
-	}
+	};
 	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
 	ctx.drawImage(//use global: ctx
 		this.img,//Specifies the image
 		(this.w*this.frameCount),//The x coordinate top left corner of frame on sprite sheet
-		(this.h*this.frameCount),//The y coordinate top left corner of frame on sprite sheet
+		0,//The y coordinate top left corner of frame on sprite sheet
 		this.w,//The width of the keyFrame image
 		this.h,//The height of the keyFrame image
 		x,//x coordinate where to place the image on the canvas
@@ -181,10 +170,14 @@ CoinSprite.prototype.draw(x,y,sx,sy){
 		sx,//The width to stretch or reduce the image
 		sy//The height to stretch or reduce the image
 	);
-	this.framecount++;
-	if (this.framecount>this.totalFrames){
-		this.frameCount = 0;//reset
-	}
+	this.frameRateCount++;
+	if (this.frameRateCount>=this.frameRate) {
+		this.frameRateCount =  0;//reset
+		this.frameCount++;//move to next frame
+			if (this.frameCount>=this.totalFrames){
+				this.frameCount = 0;//reset
+			};
+	};
 	
 }
 /******************************END SPRITE CLASSES ******************/
@@ -215,6 +208,20 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
 		 "left":{"x":0,"y":330,"frames":10,"layout":"horz","frameRate":5}});
   this.direction="default"
 };
+
+// Coin object builder
+function coinObj(img,x,y,h,w) {
+  this.img = img;
+  this.x = x;
+  this.y = y;
+  this.height = h;
+  this.width = w;
+  this.sprite = new CoinSprite(this.img,this.height,this.width,10,4,[90,70,50,20,10,20,50,70,90,100]);
+  this.direction="default";
+  this.cid = 0;//server assigned coin id
+};
+var theCoin = new coinObj(coinImage,-100,-100,100,100);//default loc off screen until server sends loc
+console.log(theCoin);
 /************end game objects*************************/
 
 /****INPUTS******/
@@ -239,9 +246,12 @@ var PlacePlayer = function () {
 
 // Update game object positions
 var update = function (modifier) {
-	hero.direction = "default";
+	
 
 	//Test for collision with the coin, if yes tell server, play sound
+	//update coin size based on what is being shown
+	//theCoin.width = theCoin.sprite.DeltaWidth[theCoin.sprite.frameCount];
+	
 	if (CollisionCheck(theCoin)){
 			ChaChingSound.currentTime=0;
 			ChaChingSound.play();
@@ -278,7 +288,8 @@ var update = function (modifier) {
 		}else {};//hit wall, down' allow further movement in this direction
 		hero.direction = "right";
 	}
-	if (Object.keys(keysDown).length<1){
+	if (Object.keys(keysDown).length<1 && hero.direction !== "default"){
+		hero.direction = "default";
 		/* THIS SHOULDN"T TRIGGER EVERY FRAME */
 		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex,'d':hero.direction}}));
 	}
@@ -292,7 +303,7 @@ var update = function (modifier) {
 
 /***************** COLLISION CHECK FUNCTION *************/
 function CollisionCheck (obj,obj2) {
-	
+
 		obj2 = obj2 || hero;// obj2 is set to player as default if no obj2 arg passed
 		
 		//determine if collision happened.  Check x axis, then y axis
@@ -323,7 +334,7 @@ var render = function () {
 	/****************************/
 
 	if (coinImgReady) {
-		theCoin.sprite.draw(theCoin.x, theCoin.y,theCoin.direction,50,50);
+		theCoin.sprite.draw(theCoin.x, theCoin.y);
 	};
 
 };
