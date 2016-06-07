@@ -157,7 +157,7 @@ CoinSprite.prototype.draw = function(x,y,sx,sy){
 	if (sx !== this.width || sy !== this.height){
 		this.width = sx*(sx/(this.DeltaWidth[this.frameCount]));
 		this.height = sy;
-	};
+	}else{this.width = this.width*((this.DeltaWidth[this.frameCount])/this.width);}
 	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
 	ctx.drawImage(//use global: ctx
 		this.img,//Specifies the image
@@ -303,14 +303,14 @@ var update = function (modifier) {
 
 /***************** COLLISION CHECK FUNCTION *************/
 function CollisionCheck (obj,obj2) {
-
+//Collision check for SPRITE based objects!
 		obj2 = obj2 || hero;// obj2 is set to player as default if no obj2 arg passed
 		
 		//determine if collision happened.  Check x axis, then y axis
-		if ((obj2.x <= obj.x + obj.height) &&
-			(obj.x <= obj2.x + obj2.height) &&
-			(obj2.y <= obj.y + obj2.width) &&		
-			(obj.y <= obj2.y + obj.width)){return true;
+		if ((obj2.x <= obj.x + obj.sprite.height) &&
+			(obj.x <= obj2.x + obj2.sprite.height) &&
+			(obj2.y <= obj.y + obj2.sprite.width) &&		
+			(obj.y <= obj2.y + obj.sprite.width)){return true;
 			}else{return false;};
 };
 // Draw everything
