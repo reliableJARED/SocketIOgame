@@ -69,9 +69,7 @@ playerRed.onload = function () {
 playerRed.src="static/images/link_sprite_red.png";
 PLAYER_IMAGE_HOLDER[1] = playerRed;
 
-
-													
-
+										
 // Coin object builder
 function coinObj(x,y) {
   this.x = x;
@@ -122,8 +120,8 @@ Sprite.prototype.draw = function (x,y,direction,sx,sy) {
 			this.frameCount = 1;//reset	repeat sprite from beginning
 		};
 		
-		var shiftX=0; 
-		var shiftY=0;
+		var shiftX=0; //used to move along sprite sheet horizontal
+		var shiftY=0;//used to move along sprite sheet vertical
 		
 		if(this.keyFrames[direction].layout==="vert"){
 			shiftY=this.height*this.frameCount;
@@ -149,7 +147,47 @@ Sprite.prototype.draw = function (x,y,direction,sx,sy) {
 			this.frameCount = 1;//reset	repeat sprite from beginning
 	}}
 };
-/******************************END SPRITE FUNCTIONS ******************/
+
+function CoinSprite(img,height,width,totalFrames,frameRate,DeltaWidth){
+  this.img = img;//the coin image
+  this.width = width;//width of coin img in sprite in pixels used in collision detection
+  this.height = height;//height of coin img in sprite in pixels used in collision detection
+  this.w = this.width;//original width property holder, used when rendered size of coin changes and collision needs to change
+  this.h = this.height;//original height property holder, used when rendered size of coin changes and collision needs to change
+  this.totalFrames = totalFrames;//total number of frames in the sprite sheet
+  this.frameRate = frameRate;
+  this.frameCount = 0;//used to track what frame you're on
+  this.DeltaWidth = 0;//used to adjust the width used in collision detection as coin spins.
+}
+CoinSprite.prototype.draw(x,y,sx,sy){
+	var sx = sx || this.width;//apparant width of coin when rendered, in pixels
+	var sy = sy || this.height;//apparant height of coin when rendered, in pixels
+	
+	//if the rendered size of the coin is different than the height/width of coin need to adjust
+	//so that collision detection is correct.  collision detection relies on this.width and this.height
+	if (sx !== this.width || sy !== this.height){
+		this.width = sx;
+		this.height = sy;
+	}
+	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+	ctx.drawImage(//use global: ctx
+		this.img,//Specifies the image
+		(this.w*this.frameCount),//The x coordinate top left corner of frame on sprite sheet
+		(this.h*this.frameCount),//The y coordinate top left corner of frame on sprite sheet
+		this.w,//The width of the keyFrame image
+		this.h,//The height of the keyFrame image
+		x,//x coordinate where to place the image on the canvas
+		y,//y coordinate where to place the image on the canvas
+		sx,//The width to stretch or reduce the image
+		sy//The height to stretch or reduce the image
+	);
+	this.framecount++;
+	if (this.framecount>this.totalFrames){
+		this.frameCount = 0;//reset
+	}
+	
+}
+/******************************END SPRITE CLASSES ******************/
 
 
 
