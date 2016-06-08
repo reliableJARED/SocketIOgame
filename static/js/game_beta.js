@@ -397,8 +397,8 @@ requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame
 //fire when DOM is ready, not all images.
 $(document).ready(function(){
 	
-	/* send unique ID to server so it can alert other players*/
-	mySocket.send(JSON.stringify({"new":UNIQUE_PLAYER_ID}));
+	/* send startup position to server so it can alert other players*/
+	mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex,'d':hero.direction}}));
 	
 	//if user selects an avatar image
 	$('button').click( function(e) {
@@ -409,7 +409,7 @@ $(document).ready(function(){
 		hero.imgIndex = index;
 		
 		//assign the image to the player
-   	hero.playerImg = PLAYER_IMAGE_HOLDER[index]; 
+		hero.playerImg = PLAYER_IMAGE_HOLDER[index]; 
    	
 	   //update to others that you have changed your image
 		mySocket.send(JSON.stringify({"ava":{"id":UNIQUE_PLAYER_ID,'ix':hero.imgIndex}}));//tell server what my moves are
@@ -468,9 +468,10 @@ $(document).ready(function(){
 						$('#myScore').html("My Score: "+hero.score);
 					}else{
 						//add 1 to players score
+						var player = CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]]
 						CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score++
 						//$(#playerID).html("player "+player number+ "score"+ player score)
-						$('#'+CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].id).html("Player "+(PlayerLookUp[JSONdata["point"].id]+1)+ " Score:"+CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score);//update the displayed score	
+						$('#'+player.id).html("Player "+(player.id)+ " Score:"+player.score);//update the displayed score	
 					};
 			};
 			
