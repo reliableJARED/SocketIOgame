@@ -41,7 +41,7 @@ def handle_message(data):
     global coinCount
     dataIN = json.loads(data)
     specialKey = "mov"
-    
+    #print "cid: " + str(coinCount[0])
     #player is broadcasting move
     if dataIN.iterkeys().next() == "mov":
 	emit('message',json.dumps(dataIN[specialKey]),broadcast=True)
@@ -66,16 +66,7 @@ def handle_message(data):
             y = random.randint(1, 450)
             coinCount[2] = y
             emit('message',json.dumps({"point":{"x":x,"y":y,"id":pid,"cid":coinCount[0]}}),broadcast=True)
-        '''
-        print "POINT"
-        print coinCount
-        print dataIN
-        pid = dataIN["point"]["id"]
-        cid = dataIN["point"]["cid"]
-        if int(cid) == coinCount[0] or coinCount[0] ==1: 
-            coinGen()
-            emit('message',json.dumps({"point":{"x":coinCount[1],"y":coinCount[2],"id":pid,"cid":coinCount[0]}}),broadcast=True)
-        '''
+
 
 if __name__ == '__main__':
     #CHANGE HOST
