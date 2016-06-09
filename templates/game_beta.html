@@ -24,12 +24,7 @@
 	<body>
 		<div class="container-fluid wrapper">
 		<div class="row">
-		<div id="avatarSelect" style="float:left;clear:both">
-		<!--
-		<button  class="button" value="0" >GREEN</button>
- 		<button  class="button"  value="1" >RED</button>
-		-->
- 		</div>
+
  		</div>
  		<div id="scoreBoard">
  			<div class="score" id="myScore" >My Score: 0</div>
@@ -37,7 +32,18 @@
 		<div class="row">
 		<div id="canvasHolder"></div>
 		</div>
-		
+		<div>
+		<input type="radio" name="playerName" id="showName" value="s">Show Player Names</input>
+		<input type="radio" name="playerName" id="hideName" value="h">Hide Player Names</input>		
+		</div>
+		<div id="avatarSelect" style="float:left;clear:both">
+		<p>PICK AN AVATAR COLOR</p>
+		<button  class="button" value="0" >GREEN</button>
+ 		<button  class="button"  value="1" >RED</button>
+ 		<button  class="button"  value="2" >BLUE</button>
+ 		<button  class="button"  value="3" >GRAY</button>
+ 		<button  class="button"  value="4" >YELLOW</button>
+ 		</div>
 		</div>
 		<!-- JS manipulating canvas must be below the actual canvas element -->
 		<script type="text/javascript" src="static/js/game_beta.js"></script>
