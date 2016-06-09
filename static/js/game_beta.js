@@ -13,7 +13,7 @@ var ChaChingSound = new Audio();
 ChaChingSound.src = ('static/sounds/ChaChing.mp3');//http://soundbible.com/mp3/Cash%20Register%20Cha%20Ching-SoundBible.com-184076484.mp3
 
 var CONNECTED_PLAYER_OBJECTS =[];//container for any connected players
-var PlayerLookUp = {};//used to quickly look up player in CONNECTED_PLAYER_OBJECTS
+var PlayerLookUp = {};//used to quickly look up player index location in CONNECTED_PLAYER_OBJECTS array
 
 
 //function for generating a random uniqueID for the player
@@ -43,39 +43,38 @@ bgImage.src = "static/images/background.png";
 
 /*Game Images
 *******************************************************/
+//COIN Sprite
+var coinImage = new Image();
+
 var PLAYER_IMAGE_HOLDER=[];//container for player images
 
-//COIN Image
-var coinImage = new Image();
+//IMAGE LOADING FUNCTION, Returns true when all ready
+function LoadPlayerImages(imgFiles) {
+	//5 colors of PLAYER Sprites
+	for (var i = 0;i<5;i++) {
+		PLAYER_IMAGE_HOLDER[i] = new Image();
+		PLAYER_IMAGE_HOLDER[i].onload = function () {
+			console.log("image "+i+" loaded");
+		};
+		PLAYER_IMAGE_HOLDER[i].src = imgFiles[i];
+		if (i===4) {return true;}
+	};
+};
+PlayerImagesReady = LoadPlayerImages(["static/images/link_sprite_green.png",
+"static/images/link_sprite_red.png","static/images/link_sprite_blue.png",
+"static/images/link_sprite_gray.png","static/images/link_sprite_yellow.png"]);
+
 var coinImgReady =false;
 coinImage.onload = function() {   
      coinImgReady = true;
 };	
 coinImage.src = "static/images/coin.png";	
-
-var playerGreen = new Image();
-var pGready=false;
-playerGreen.onload = function () {
-	pGready = true;	
-}
-playerGreen.src="static/images/link_sprite65x65.png"; 
-PLAYER_IMAGE_HOLDER[0] = playerGreen;
-
-var playerRed = new Image();
-var pRready = false;
-playerRed.onload = function () {
-	pRready = true;	
-}
-playerRed.src="static/images/link_sprite_red.png";
-PLAYER_IMAGE_HOLDER[1] = playerRed;
-
-									
-
+							
 /*************end images************************/
 
 
 
-/***********SPRITE CLASS***************************
+/***********SPRITE CLASSES***************************
 ***************************************************/
 function Sprite(img,height,width,keyFrames){
   this.img = img;
@@ -98,8 +97,8 @@ function Sprite(img,height,width,keyFrames){
 
 Sprite.prototype.draw = function (x,y,direction,hoverText,sx,sy) {
 		var direction = direction || 'default';
-		var sx = sx || this.width; //optional img stretch/shrink args
-		var sy = sy || this.height;//optional img stretch/shrink args
+		//var sx = sx || this.width; //optional img stretch/shrink args
+		//var sy = sy || this.height;//optional img stretch/shrink args
 		var hoverText = hoverText || false;//put text above character
 		
 		//test if still working on the same set of keyFrames, else reset counters
@@ -109,27 +108,34 @@ Sprite.prototype.draw = function (x,y,direction,hoverText,sx,sy) {
 			this.frameCount = 1;//reset	repeat sprite from beginning
 		};
 		
+		/***********************************
+		Functionality to allow vertical or horizontal traversing of sprite sheet
+		commented out for now, only horz is needed for sprites being used
+		**************************************/
+		/*
 		var shiftX=0; //used to move along sprite sheet horizontal
 		var shiftY=0;//used to move along sprite sheet vertical
 		
 		if(this.keyFrames[direction].layout==="vert"){
 			shiftY=this.height*this.frameCount;
 		}else{shiftX=this.width*this.frameCount;};
+		*/
+		var shiftX=this.width*this.frameCount;//remove if using vert/horz functionality above
 		
 	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
 	ctx.drawImage(//use global: ctx
 		this.img,//Specifies the image
 		this.keyFrames[direction].x+shiftX,//The x coordinate top left corner of frame on sprite sheet
-		this.keyFrames[direction].y+shiftY,//The y coordinate top left corner of frame on sprite sheet
+		this.keyFrames[direction].y,//+shiftY,//The y coordinate top left corner of frame on sprite sheet
 		this.width,//The width of the keyFrame image
 		this.height,//The height of the keyFrame image
 		x,//x coordinate where to place the image on the canvas
 		y,//y coordinate where to place the image on the canvas
-		sx,//The width to stretch or reduce the image
-		sy//The height to stretch or reduce the image
+		this.width, //sx,//The width to stretch or reduce the image
+		this.height //sy//The height to stretch or reduce the image
 	);
 	//put text above sprite
-	if (hoverText) {
+	if (hoverText && document.getElementById('showName').checked) {
 		ctx.fillStyle = 'white';
 		ctx.font = "16px Arial";
 		ctx.fillText(hoverText,x,y);
@@ -332,7 +338,8 @@ var render = function () {
 	
 	/**********SPRITE TEST********/
 	//main player
-	if (pRready && pGready) {
+	//if (pRready && pGready) {
+	if (PlayerImagesReady) {
 		hero.sprite.draw(hero.x, hero.y,hero.direction, hero.id);
 		//IF Other players are connected draw them
 		if (CONNECTED_PLAYER_OBJECTS.length>0) {
@@ -365,15 +372,14 @@ var main = function () {
 };
 
 //create a new player obj in CONNECTED_PLAYER_OBJECTS for the NEW player Id that was found
-
 function createAplayer(JSONdata) {
 		 			console.log("creatingPlayer");
 		 			console.log(JSONdata);
 		 			//builder takes (id, x,y,imgIdx), 
 		 			//JSONdata.ix is an index number for the array of player images:PLAYER_IMAGE_HOLDER[]
-		 			//NOTE: HARD CODED WIDTH, HEIGHT of 60px !!!!!!!!
-		 			CONNECTED_PLAYER_OBJECTS.push(new PlayerObjBuilder(JSONdata.id,JSONdata.x,JSONdata.y,60,60,1));//parseInt(JSONdata.ix)));
-		 			playerExists=true;//reset
+		 			//NOTE: HARD CODED WIDTH, HEIGHT of 60px x 60px!!!!!!!!
+		 			CONNECTED_PLAYER_OBJECTS.push(new PlayerObjBuilder(JSONdata.id,JSONdata.x,JSONdata.y,60,60,parseInt(JSONdata.ix)));//parseInt(JSONdata.ix)));
+		 			
 		 			
 		 			//create score area for player
 		 			var Element = document.createElement("div");
@@ -405,14 +411,17 @@ $(document).ready(function(){
 		//get selection value
 		var index = parseInt($(this).prop("value"));
 		
-		//set what idex in the player images is being used
-		hero.imgIndex = index;
+		//set what index in the player images is being used
+	//	hero.imgIndex = index;
 		
 		//assign the image to the player
-		hero.playerImg = PLAYER_IMAGE_HOLDER[index]; 
-   	
+//		hero.playerImg = PLAYER_IMAGE_HOLDER[index];
+		 
+		//remake player object with new image color
+   	hero = new PlayerObjBuilder(UNIQUE_PLAYER_ID,hero.x,hero.y,60,60,index);
+	   
 	   //update to others that you have changed your image
-		mySocket.send(JSON.stringify({"ava":{"id":UNIQUE_PLAYER_ID,'ix':hero.imgIndex}}));//tell server what my moves are
+		mySocket.send(JSON.stringify({"ava":{'id':UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':index,'d':hero.direction}}));//tell server changed avatar color
 		
 	});
 
@@ -439,69 +448,69 @@ $(document).ready(function(){
 
 					}
 				else if(!playerExists){
-						//if you do not have this player ID already, create a player object for this ID
+						//if you do not have this player ID already
+						
+						//match players ID with the index they will have in CONNECTED_PLAYER_OBJECTS
+						//because CONNECTED_PLAYER_OBJECTS.length =1 when only a single player
+						//obj exists but index of that player is actually 0 they are offset
+						//that means for new players their index will be the same as current CONNECTED_PLAYER_OBJECTS.length
 						PlayerLookUp[JSONdata.id] = CONNECTED_PLAYER_OBJECTS.length;
+						//create a player object for this ID
 						createAplayer(JSONdata);
-						playerExists = true;
+						playerExists = true;//reset
 					};
 			 };
 			/*
 			NON MOVEMENT TYPE INBOUND MESSAGES
+			THEY WILL NOT HAVE 'ID' as one of the keys
 			*/			
-			if (Object.keys(JSONdata)[0] !== 'id') {
-				if (Object.keys(JSONdata)[0] === 'coin'){
-					theCoin.x = JSONdata["coin"].x;
-					theCoin.y = JSONdata["coin"].y;
-					theCoin.cid = JSONdata["coin"].cid;};
-			
-			if (Object.keys(JSONdata)[0] === 'coin'){
-					theCoin.x = JSONdata["coin"].x;
-					theCoin.y = JSONdata["coin"].y;
-					theCoin.cid = JSONdata["coin"].cid;}
+			//if (Object.keys(JSONdata)[0] !== 'id') {
+			if (!JSONdata.id){	
+			//get the top json key.  messages come in format {msgKey:{the message json}}
+			var msgkey = Object.keys(JSONdata)[0];
+				if (msgkey === 'coin'){
+						theCoin.x = JSONdata[msgkey].x;
+						theCoin.y = JSONdata[msgkey].y;
+						theCoin.cid = JSONdata[msgkey].cid;}
+				
+				if (msgkey === 'point'){
+						theCoin.x = JSONdata[msgkey].x;
+						theCoin.y = JSONdata[msgkey].y;
+						theCoin.cid = JSONdata[msgkey].cid;
 					
-				if (Object.keys(JSONdata)[0] === 'point'){
-					theCoin.x = JSONdata["point"].x;
-					theCoin.y = JSONdata["point"].y;
-					theCoin.cid = JSONdata["point"].cid;
-					if (JSONdata["point"].id===UNIQUE_PLAYER_ID){
-						hero.score++;
-						$('#myScore').html("My Score: "+hero.score);
-					}else{
-						//add 1 to players score
-						var player = CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]]
-						CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score++
-						//$(#playerID).html("player "+player number+ "score"+ player score)
-						$('#'+player.id).html("Player "+(player.id)+ " Score:"+player.score);//update the displayed score	
+						if (JSONdata[msgkey].id===UNIQUE_PLAYER_ID){
+							hero.score++;
+							$('#myScore').html("My Score: "+hero.score);
+						}else{
+							//add 1 to players score
+							var player = CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]]
+							CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score++
+							//$(#playerID).html("player "+player number+ "score"+ player score)
+							$('#'+player.id).html("Player "+(player.id)+ " Score:"+player.score);//update the displayed score	
+						};
 					};
-			};
-			
 
-			if (Object.keys(JSONdata)[0] === 'rem'){
-				console.log(CONNECTED_PLAYER_OBJECTS);
-				for (var h=0;h<=CONNECTED_PLAYER_OBJECTS.length;h++) {
-					if(JSONdata.remove === CONNECTED_PLAYER_OBJECTS[h].id){
-						CONNECTED_PLAYER_OBJECTS.splice(h,1);};
+				if (msgkey === 'rem'){
+					console.log(CONNECTED_PLAYER_OBJECTS);
+					for (var h=0;h<=CONNECTED_PLAYER_OBJECTS.length;h++) {
+						if(JSONdata.remove === CONNECTED_PLAYER_OBJECTS[h].id){
+							CONNECTED_PLAYER_OBJECTS.splice(h,1);};
 					};
 			};
-			
 			
 			//special msg header 'avatar' if they changed their avatar image
 			if (Object.keys(JSONdata)[0] === 'ava'){
 				//Check if the message in was the echo of players avatar change
-			  if (JSONdata.avatar.id != UNIQUE_PLAYER_ID) {
-			  	
-				//get the index for the new image they are using
-					var ix = parseInt(JSONdata.avatar.ix);
-					
-					//loop through the player objects
-					for (var h=0;h<=CONNECTED_PLAYER_OBJECTS.length;h++) {
-						
-						//when you find the right player id, update the player img
-						if(CONNECTED_PLAYER_OBJECTS[h].id === JSONdata.avatar.id ){
-							CONNECTED_PLAYER_OBJECTS[h].playerImg = PLAYER_IMAGE_HOLDER[ix]//set img again		
-						};		
-					};
-							main();//call again to update with the players new img
+			  if (JSONdata[Object.keys(JSONdata)[0]].id != UNIQUE_PLAYER_ID) {
+			  	var playerData = JSONdata[Object.keys(JSONdata)[0]];
+			  	//look up the players index
+			  	var playerIndex = PlayerLookUp[playerData.id];
+			  	//get the player object for this ID
+			  	var player = CONNECTED_PLAYER_OBJECTS[playerIndex];
+			   //replace with the updated player
+			  	CONNECTED_PLAYER_OBJECTS[playerIndex] = new PlayerObjBuilder(playerData.id,playerData.x,playerData.y,60,60,parseInt(playerData.ix));
+
+				//main();//call again to update with the players new img
 				};
 			 } 
 		}
