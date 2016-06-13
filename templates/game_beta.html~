@@ -33,8 +33,8 @@
 		<div id="canvasHolder"></div>
 		</div>
 		<div>
-		<input type="radio" name="playerName" id="showName" value="s" />
-		<input type="radio" name="playerName" id="hideName" value="h" />		
+		<input type="radio" name="playerName" id="showName" value="s">Show Player Names</input>
+		<input type="radio" name="playerName" id="hideName" value="h">Hide Player Names</input>		
 		</div>
 		<div id="avatarSelect" style="float:left;clear:both">
 		<p>PICK AN AVATAR COLOR</p>
