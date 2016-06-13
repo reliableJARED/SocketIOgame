@@ -74,7 +74,7 @@ coinImage.src = "static/images/coin.png";
 var fireBallImage = new Image();
 var fireBallImgReady =false;
 fireBallImage.onload = function() {   
-     fireBallImage = true;
+     fireBallImgReady = true;
 };	
 fireBallImage.src = "static/images/fireball_red.png";	
 							
@@ -246,7 +246,7 @@ FireBallSprite.prototype.draw = function(x,y){
 var theCoin = new coinObj(coinImage,-100,-100,100,100,9,4);//default loc off screen until server sends loc
 console.log(theCoin);
 //fireballObj(img,x-canvas,y-canvas,h-sprite,w-sprite,numFrames in sprite,animation speed-lower is faster)
-var fireBall = new fireballObj(fireBallImage,200,200,16,16,4,2);
+var fireBall = new fireballObj(200,200);
 //local player
 //PlayerObjBuilder(UNIQUE_PLAYER_ID,x,y,height,width,index in PLAYER_IMAGE_HOLDER);
 var hero = new PlayerObjBuilder(UNIQUE_PLAYER_ID,0,0,60,60,0);
@@ -288,15 +288,15 @@ function coinObj(img,x,y,h,w,numFrames,speed) {
   this.cid = 0;//server assigned coin id
 };
 //fireball object builder
-function fireballObj(img,x,y,h,w,numFrames,AnimationSpeed,td) {
-  this.img = img;
-  this.numFrames = numFrames;
-  this.AnimationSpeed = AnimationSpeed;
-  this.MoveSpeed = 250;//movement speed in pixels per frame
+function fireballObj(x,y,td) {
+  this.img = fireBallImage;
+  this.numFrames = 4;
+  this.AnimationSpeed = 4;//lower is faster
+  this.MoveSpeed = 5;//movement speed in pixels per frame
   this.x = x;
   this.y = y;
-  this.height = h;
-  this.width = w;
+  this.height = 16;
+  this.width = 16;
   //                FireBallSprite(img,height,width,x,y,totalFrames,frameRate,DeltaWidth)
   this.sprite = new FireBallSprite(this.img,this.height,this.width,0,0,this.numFrames,this.AnimationSpeed,[90,70,50,20,10,20,50,70,90,100]);
   this.travelDirection = td || [0,0];//x,y multipliers 0 means not travelling that direction
@@ -369,21 +369,23 @@ var update = function (modifier) {
 		hero.direction = "right";
 	}
 	/***********SHOOT FIREBALL*************/
+	//console.log(keysDown);
 	if (32 in keysDown) {
+		console.log(keysDown);
+		console.log(hero.fireBallsActive);
 		if (hero.fireBallsActive.length <5) {
 			//fireballObj(img,x-canvas,y-canvas,h-sprite,w-sprite,numFrames in sprite,animation speed-lower is faster,travelDirection)
-			hero.fireBallsActive.push(new fireballObj(fireBallImage,hero.x,hero.y,16,16,4,2,fireBallDirection()));//add to a fireball obj array
+			hero.fireBallsActive.push(new fireballObj(hero.x,hero.y,fireBallDirection()));//add to a fireball obj array
 			hero.fireBall = true;//shoot fireball
 		};
 		
 	}	
 	/************FIREBALL LOCATION*************/
 	if (hero.fireBall) {	
-	console.log(hero.fireBallsActive);
-	console.log(hero.fireBallsActive[0]);
+
 		for (var fb =0; fb <hero.fireBallsActive.length; fb++) {
-			hero.fireBallsActive[fb].x = hero.fireBallsActive[fb].x * hero.fireBallsActive[fb].travelDirection[0] + hero.fireBallsActive[fb].MoveSpeed;
-			hero.fireBallsActive[fb].y = hero.fireBallsActive[fb].y * hero.fireBallsActive[fb].travelDirection[1] + hero.fireBallsActive[fb].MoveSpeed;
+			hero.fireBallsActive[fb].x = hero.fireBallsActive[fb].travelDirection[0] * (hero.fireBallsActive[fb].x + hero.fireBallsActive[fb].MoveSpeed);
+			hero.fireBallsActive[fb].y = hero.fireBallsActive[fb].travelDirection[1] * (hero.fireBallsActive[fb].y + hero.fireBallsActive[fb].MoveSpeed);
 			/*if (hero.fireBallsActive[fb].y > canvas.height || hero.fireBallsActive[fb].y < canvas.height ) {
 				hero.fireBallsActive.splice(fb,1);//remove the fireball
 			}
@@ -415,7 +417,7 @@ function fireBallDirection() {
 		*/
 	if ( 87 in keysDown) {_direction[1] = 1;};
 	if ( 65 in keysDown) {_direction[0] = 1;};
-	if ( 83 in keysDown) { _direction[0] = 1;};
+	if ( 83 in keysDown) {_direction[0] = 1;};
 	if ( 68 in keysDown) {_direction[1] = 1;};
 	
 	return _direction;
@@ -462,18 +464,18 @@ var render = function () {
 		ctx.strokeRect(theCoin.x,theCoin.y,theCoin.sprite.width,theCoin.sprite.height); 
 		theCoin.sprite.draw(theCoin.x, theCoin.y,50,50);
 		};
-	if (hero.fireBall) {
+	if (hero.fireBall && fireBallImgReady) {
 		//console.log("fireball");
-		fireBall.sprite.draw(hero.x, hero.y);//shoots a fire ball starting at this xy
+		//fireBall.sprite.draw(hero.x, hero.y);//shoots a fire ball starting at this xy
 		//console.log(hero.fireBallsActive[0].sprite);
 		//hero.fireBallsActive[0].sprite.draw(hero.x, hero.y);//shoots a fire ball starting at this xy
-		/*
+		
 		for (var fb =0; fb <hero.fireBallsActive.length; fb++) {
-			console.log(hero.fireBallsActive[fb].x);
-			console.log(hero.fireBallsActive[fb].y);
-			console.log(hero.fireBallsActive[fb].sprite);
-			hero.fireBallsActive[fb].sprite.draw(200, 200);//shoots a fire ball starting at this xy
-		};*/
+			//console.log(hero.fireBallsActive[fb].x);
+			//console.log(hero.fireBallsActive[fb].y);
+			//console.log(hero.fireBallsActive[fb].sprite);
+			hero.fireBallsActive[fb].sprite.draw(hero.x, hero.y);//shoots a fire ball starting at this xy
+		};
 	};
 		/*
 	if (fireBallImage) {
