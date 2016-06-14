@@ -255,10 +255,10 @@ var hero = new PlayerObjBuilder(UNIQUE_PLAYER_ID,0,0,60,60,0);
 function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
   this.id = id;
   this.speed = 128; //pixels per second when moving
-  this.x = x;
-  this.y = y;
-  this.height = height;
-  this.width = width;
+  this.x = x;//x coordinate of top left corner on canvas
+  this.y = y;//y coordinate of top left corner on canvas
+  this.height = height;//height size in pixels
+  this.width = width;//width size in pixels
   this.score = 0;
   this.imgIndex = imgIdx;
   this.playerImg = PLAYER_IMAGE_HOLDER[this.imgIndex];
@@ -271,6 +271,8 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
   this.direction="default";
   this.fireBall = false;//shoots a fire ball starting at this xy
   this.fireBallsActive =[];//array of active fireballs on screen
+  this.fireBallDelay = 0;//rate of fire delay
+  this.fireBallDelay_count = 15;//frames that need to pass before next shot can happen
 };
 
 // Coin object builder
@@ -292,14 +294,14 @@ function fireballObj(x,y,td) {
   this.img = fireBallImage;
   this.numFrames = 4;
   this.AnimationSpeed = 4;//lower is faster
-  this.MoveSpeed = 5;//movement speed in pixels per frame
+  this.MoveSpeed = 200;//movement speed in pixels per frame
   this.x = x;
   this.y = y;
   this.height = 16;
   this.width = 16;
   //                FireBallSprite(img,height,width,x,y,totalFrames,frameRate,DeltaWidth)
   this.sprite = new FireBallSprite(this.img,this.height,this.width,0,0,this.numFrames,this.AnimationSpeed,[90,70,50,20,10,20,50,70,90,100]);
-  this.travelDirection = td || [0,0];//x,y multipliers 0 means not travelling that direction
+  this.travelDirection = td || {x:0,y:0};//x,y multipliers 0 means not travelling that direction
 };
 
 
@@ -342,7 +344,9 @@ var update = function (modifier) {
 	
 	var PreviousFramePosition_X = hero.x;
 	var PreviousFramePosition_Y = hero.y;
-	
+	if (hero.fireBallDelay <= hero.fireBallDelay_count) {
+	hero.fireBallDelay ++;//add one to the rate of fire delay
+	};
 	/**************MOVEMENT ******************/
 	if (38 in keysDown) { // Player holding UP
 		if (hero.y >0) {//**first - check for wall collision
@@ -371,27 +375,29 @@ var update = function (modifier) {
 	/***********SHOOT FIREBALL*************/
 	//console.log(keysDown);
 	if (32 in keysDown) {
-		console.log(keysDown);
-		console.log(hero.fireBallsActive);
-		if (hero.fireBallsActive.length <5) {
-			//fireballObj(img,x-canvas,y-canvas,h-sprite,w-sprite,numFrames in sprite,animation speed-lower is faster,travelDirection)
-			hero.fireBallsActive.push(new fireballObj(hero.x,hero.y,fireBallDirection()));//add to a fireball obj array
-			hero.fireBall = true;//shoot fireball
+		if (hero.fireBallDelay > hero.fireBallDelay_count) {
+			if (hero.fireBallsActive.length <5) {
+				//fireballObj(img,x-canvas,y-canvas,h-sprite,w-sprite,numFrames in sprite,animation speed-lower is faster,travelDirection)
+				var shoot_fb = ShootFireBall(hero.x+hero.width/2,hero.y+hero.height/2)			
+				hero.fireBallsActive.push(shoot_fb);//add to a fireball obj array
+				hero.fireBall = true;//shoot fireball
+				hero.fireBallDelay = 0;//reset delay
+			};
 		};
-		
-	}	
-	/************FIREBALL LOCATION*************/
+	};	
+	/************FIREBALL LOCATION UPDATE*************/
 	if (hero.fireBall) {	
 
 		for (var fb =0; fb <hero.fireBallsActive.length; fb++) {
-			hero.fireBallsActive[fb].x = hero.fireBallsActive[fb].travelDirection[0] * (hero.fireBallsActive[fb].x + (hero.fireBallsActive[fb].MoveSpeed*modifier));
-			hero.fireBallsActive[fb].y = hero.fireBallsActive[fb].travelDirection[1] * (hero.fireBallsActive[fb].y + (hero.fireBallsActive[fb].MoveSpeed*modifier));
-			/*if (hero.fireBallsActive[fb].y > canvas.height || hero.fireBallsActive[fb].y < canvas.height ) {
+			var fireball = hero.fireBallsActive[fb];
+			fireball.x = fireball.x +(fireball.travelDirection.x *fireball.MoveSpeed*modifier);
+			fireball.y = fireball.y +(fireball.travelDirection.y*fireball.MoveSpeed*modifier);
+			if (fireball.y > canvas.height || fireball.y < 0 ) {
 				hero.fireBallsActive.splice(fb,1);//remove the fireball
 			}
-			if (hero.fireBallsActive[fb].x > canvas.width || hero.fireBallsActive[fb].x < canvas.width ) {
+			if (fireball.x > canvas.width || fireball.x < 0) {
 				hero.fireBallsActive.splice(fb,1);//remove the fireball
-			}*/
+			}
 			
 		}
 	};
@@ -408,19 +414,22 @@ var update = function (modifier) {
 		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(hero.x),'y':Math.round(hero.y),'ix':hero.imgIndex,'d':hero.direction}}));
 	};
 };
-/*************FireBall Travel Direction *****/
-function fireBallDirection() {
-	var _direction =[0,0];//x,y of fire ball will be multiplied by these and it's speed
+/*************Shoot FireBall *****/
+function ShootFireBall(hx,hy) {
+	var _direction ={x:0,y:0};//x,y of fire ball will be multiplied by these and it's speed
 			/*
 		Key Codes:
 		w = 87, a = 65, s = 83, d = 68
 		*/
-	if ( 87 in keysDown) {_direction[1] = 1;};
-	if ( 65 in keysDown) {_direction[0] = 1;};
-	if ( 83 in keysDown) {_direction[0] = 1;};
-	if ( 68 in keysDown) {_direction[1] = 1;};
+	if ( 87 in keysDown) {_direction.y = -1;};
+	if ( 65 in keysDown) {_direction.x = -1;};
+	if ( 83 in keysDown) {_direction.y = 1;};
+	if ( 68 in keysDown) {_direction.x = 1;};
+	/* FIX THIS
+	if user only presses space bar fire ball is dropped
+	do we want this? If so they need to expire if no one collides*/
 	
-	return _direction;
+	return new fireballObj(hx,hy,_direction);
 }
 
 
@@ -471,10 +480,7 @@ var render = function () {
 		//hero.fireBallsActive[0].sprite.draw(hero.x, hero.y);//shoots a fire ball starting at this xy
 		
 		for (var fb =0; fb <hero.fireBallsActive.length; fb++) {
-			//console.log(hero.fireBallsActive[fb].x);
-			//console.log(hero.fireBallsActive[fb].y);
-			//console.log(hero.fireBallsActive[fb].sprite);
-			hero.fireBallsActive[fb].sprite.draw(hero.x, hero.y);//shoots a fire ball starting at this xy
+			hero.fireBallsActive[fb].sprite.draw(hero.fireBallsActive[fb].x, hero.fireBallsActive[fb].y);//shoots a fire ball starting at this xy
 		};
 	};
 		/*
