@@ -384,8 +384,8 @@ var update = function (modifier) {
 	if (hero.fireBall) {	
 
 		for (var fb =0; fb <hero.fireBallsActive.length; fb++) {
-			hero.fireBallsActive[fb].x = hero.fireBallsActive[fb].travelDirection[0] * (hero.fireBallsActive[fb].x + hero.fireBallsActive[fb].MoveSpeed);
-			hero.fireBallsActive[fb].y = hero.fireBallsActive[fb].travelDirection[1] * (hero.fireBallsActive[fb].y + hero.fireBallsActive[fb].MoveSpeed);
+			hero.fireBallsActive[fb].x = hero.fireBallsActive[fb].travelDirection[0] * (hero.fireBallsActive[fb].x + (hero.fireBallsActive[fb].MoveSpeed*modifier));
+			hero.fireBallsActive[fb].y = hero.fireBallsActive[fb].travelDirection[1] * (hero.fireBallsActive[fb].y + (hero.fireBallsActive[fb].MoveSpeed*modifier));
 			/*if (hero.fireBallsActive[fb].y > canvas.height || hero.fireBallsActive[fb].y < canvas.height ) {
 				hero.fireBallsActive.splice(fb,1);//remove the fireball
 			}
