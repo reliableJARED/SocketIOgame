@@ -343,8 +343,8 @@ var update = function (modifier) {
 	if (CollisionCheck(theCoin)){
 			ChaChingSound.currentTime=0;
 			ChaChingSound.play();
-			console.log("point"); 
-			console.log(theCoin.cid);
+			//console.log("point"); 
+			//console.log(theCoin.cid);
 			mySocket.send(JSON.stringify({"point":{"id":UNIQUE_PLAYER_ID,"cid":theCoin.cid}}));
 	};
 	
@@ -460,6 +460,7 @@ var update = function (modifier) {
 
 /***************** COLLISION CHECK FUNCTION *************/
 function CollisionCheck (obj,obj2) {
+	if (typeof obj === 'undefined'){return false};//deal with fireball being launched in collision state, ie characters are ontop of eachoter
 //https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
 		//Collision check for SPRITE based objects!
 		obj2 = obj2 || ALL_PLAYER_OBJECTS[0];// obj2 is set to player as default if no obj2 arg passed
