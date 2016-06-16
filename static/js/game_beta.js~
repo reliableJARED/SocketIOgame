@@ -286,7 +286,7 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
   this.fireBallsActive =[];//array of active fireballs on screen
   this.fireBallDelay = 0;//rate of fire delay
   this.fireBallDelay_count = 15;//frames that need to pass before next shot can happen
-  this.maxFireBalls = 5;//max number of onscreen fireballs
+  this.maxFireBalls = 3;//max number of onscreen fireballs
   this.ShootFireBall = function (kd) {
   		var _direction ={x:0,y:0};//x,y of fireball will be multiplied by these x,y and it's MoveSpeed
 		/*Key Codes:
@@ -315,13 +315,14 @@ function coinObj(img,x,y,h,w,numFrames,speed) {
   this.sprite = new CoinSprite(this.img,this.height,this.width,0,0,this.numFrames,this.speed,[90,70,50,20,10,20,50,70,90,100]);
   this.direction="default";
   this.cid = 0;//server assigned coin id
+  this.pointAmount = 100;  //point award for getting the coin
 };
 //fireball object builder
 function fireballObj(x,y,td) {
   this.img = fireBallImage;
   this.numFrames = 4;
   this.AnimationSpeed = 4;//lower is faster
-  this.MoveSpeed = 20;//movement speed in pixels per frame
+  this.MoveSpeed = 170;//movement speed in pixels per frame
   this.x = x;
   this.y = y;
   this.height = 16;
@@ -329,6 +330,7 @@ function fireballObj(x,y,td) {
   //                FireBallSprite(img,height,width,x,y,totalFrames,frameRate,DeltaWidth)
   this.sprite = new FireBallSprite(this.img,this.height,this.width,0,0,this.numFrames,this.AnimationSpeed,[90,70,50,20,10,20,50,70,90,100]);
   this.travelDirection = td || {x:0,y:0};//x,y multipliers 0 means not travelling that direction
+  this.damage = 10;
 };
 /************end game objects*************************/
 
@@ -389,21 +391,31 @@ var update = function (modifier) {
 				ShotFired = true;}}	}
 	
 	/************  FIREBALL LOCATION/COLLISION UPDATES  *************/
-	/* This is why HERO needs to be in CONNECTED_PLAYER_OBJECTS[] */
+	/* This is why HERO needs to be in CONNECTED_PLAYER_OBJECTS[0] */
+	/******************************************************************/
 	for (var fb =0; fb <hero.fireBallsActive.length; fb++) {
 			var fireball = hero.fireBallsActive[fb];//USED TO MAKE EASY FOR HUMAN TO READ
 			
 			//if the fireball is off screen, remove
 			if (fireball.y > canvas.height || fireball.y < 0 || fireball.x > canvas.width || fireball.x < 0) {
 				hero.fireBallsActive.splice(fb,1);//remove the fireball
-				
+				}
+			
 			//move the fireball if it's still on the screen
 			}else {
 				fireball.x = fireball.x +(fireball.travelDirection.x *fireball.MoveSpeed*modifier);
-				fireball.y = fireball.y +(fireball.travelDirection.y*fireball.MoveSpeed*modifier);}
-				};
+				fireball.y = fireball.y +(fireball.travelDirection.y*fireball.MoveSpeed*modifier);
 				
-	//update other players fireballs
+			//check if the fireball hit another player remove it	if true
+				for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
+					if(CollisionCheck(fireball,CONNECTED_PLAYER_OBJECTS[h])){
+						hero.fireBallsActive.splice(fb,1);//remove the fireball
+						};
+					};
+				};
+			};
+    /*****************************/
+	//*******update other players fireballs
 	for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
 			for (var fb =0; fb <CONNECTED_PLAYER_OBJECTS[h].fireBallsActive.length; fb++)  {
 					if (CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y > canvas.height || CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y < 0 || CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x > canvas.width || CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x < 0) {
@@ -411,10 +423,10 @@ var update = function (modifier) {
 					}else	{
 						CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x = CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x +(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].travelDirection.x *CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].MoveSpeed*modifier);
 						CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y = CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y +(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].travelDirection.y*CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].MoveSpeed*modifier);					
-						//Check if other players fireball hit you		
-						console.log("check FB");				
-						var checkhit = CollisionCheck(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb]);//{console.log("hit")};
-						console.log(checkhit);
+						//Check if other players fireball hit you					
+						if(CollisionCheck(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb])){
+								CONNECTED_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
+								hero.score -= fireball.damage};
 						};								
 			};			
 		};
@@ -440,15 +452,14 @@ var update = function (modifier) {
 
 /***************** COLLISION CHECK FUNCTION *************/
 function CollisionCheck (obj,obj2) {
-
+//https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
 		//Collision check for SPRITE based objects!
 		obj2 = obj2 || hero;// obj2 is set to player as default if no obj2 arg passed
-	if (obj.sprite.testMe) {console.log(obj,obj2)};	
 		//determine if collision happened.  Check x axis, then y axis
-		if ((obj2.x <= obj.x + obj.sprite.width) &&
-			(obj.x <= obj2.x + obj2.sprite.width) &&
-			(obj2.y <= obj.y + obj2.sprite.height) &&		
-			(obj.y <= obj2.y + obj.sprite.height)){return true;
+		if ((obj2.x < obj.x + obj.sprite.width) &&
+			(obj.x < obj2.x + obj2.sprite.width) &&
+			(obj2.y < obj.y + obj.sprite.height) &&		
+			(obj.y < obj2.y + obj2.sprite.height)){return true;
 			}else{return false;};
 };
 // Draw everything
@@ -462,7 +473,7 @@ var render = function () {
 	//if (pRready && pGready) {
 	if (PlayerImagesReady && fireBallImgReady) {
 		//BOUNDING RECT FOR COLLISION DETECT TESTING
-		ctx.strokeRect(hero.x,hero.y,hero.sprite.width,hero.sprite.height); 
+		//ctx.strokeRect(hero.x,hero.y,hero.sprite.width,hero.sprite.height); 
 		
 		//render the local player
 		hero.sprite.draw(hero.x, hero.y,hero.direction, hero.id);
@@ -476,7 +487,8 @@ var render = function () {
 			for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
 				CONNECTED_PLAYER_OBJECTS[h].sprite.draw(CONNECTED_PLAYER_OBJECTS[h].x, CONNECTED_PLAYER_OBJECTS[h].y,CONNECTED_PLAYER_OBJECTS[h].direction,CONNECTED_PLAYER_OBJECTS[h].id);
 				for (var fb =0; fb <CONNECTED_PLAYER_OBJECTS[h].fireBallsActive.length; fb++)  {	
-				ctx.strokeRect(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.width,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.height); 
+				//BOUNDING RECT FOR COLLISION DETECT TESTING
+			//	ctx.strokeRect(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.width,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.height); 
 					CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.draw(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x, CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y);//shoots a fire ball starting at this xy
 				}			
 			}		
@@ -485,7 +497,8 @@ var render = function () {
 	/****************************/
 
 	if (coinImgReady) {
-		ctx.strokeRect(theCoin.x,theCoin.y,theCoin.sprite.width,theCoin.sprite.height); 
+		//BOUNDING RECT FOR COLLISION DETECT TESTING
+		//ctx.strokeRect(theCoin.x,theCoin.y,theCoin.sprite.width,theCoin.sprite.height); 
 		theCoin.sprite.draw(theCoin.x, theCoin.y,50,50);
 		};
 
@@ -612,12 +625,12 @@ $(document).ready(function(){
 						theCoin.cid = JSONdata[msgkey].cid;
 					
 						if (JSONdata[msgkey].id===UNIQUE_PLAYER_ID){
-							hero.score++;
+							hero.score+=theCoin.pointAmount;
 							$('#myScore').html("My Score: "+hero.score);
 						}else{
 							//add 1 to players score
 							var player = CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]]
-							CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score++
+							CONNECTED_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score+=theCoin.pointAmount
 							//$(#playerID).html("player "+player number+ "score"+ player score)
 							$('#'+player.id).html("Player "+(player.id)+ " Score:"+player.score);//update the displayed score	
 						};
