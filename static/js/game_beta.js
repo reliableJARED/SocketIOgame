@@ -13,7 +13,7 @@ var ChaChingSound = new Audio();
 ChaChingSound.src = ('static/sounds/ChaChing.mp3');//http://soundbible.com/mp3/Cash%20Register%20Cha%20Ching-SoundBible.com-184076484.mp3
 
 var ALL_PLAYER_OBJECTS =[];//container for any connected players, local player always index 0
-var PlayerLookUp = {};//used to quickly look up player index location in ALL_PLAYER_OBJECTS array
+var PLAYER_INDEX = {};//used to quickly look up player index location in ALL_PLAYER_OBJECTS array
 
 
 //function for generating a random uniqueID for the player
@@ -536,7 +536,7 @@ function createAplayer(JSONdata) {
 		 			
 		 			//put new player in the look up object, 
 		 			//assign it's index in the ALL_PLAYER_OBJECTS as value
-		 			PlayerLookUp[JSONdata.id] = ALL_PLAYER_OBJECTS.length-1;
+		 			PLAYER_INDEX[JSONdata.id] = ALL_PLAYER_OBJECTS.length-1;
 		 			
 		 };
 
@@ -583,10 +583,10 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 			if(JSONdata.id != UNIQUE_PLAYER_ID && JSONdata.id) {
 				var playerExists = false;
 				//check if you have the player ID already in your ALL_PLAYER_OBJECTS
-				if (PlayerLookUp.hasOwnProperty(JSONdata.id)) {
+				if (PLAYER_INDEX.hasOwnProperty(JSONdata.id)) {
 						//if you DO have this player ID already, make true
 						playerExists = true;
-						var h = PlayerLookUp[JSONdata.id];
+						var h = PLAYER_INDEX[JSONdata.id];
 						// update the player object location on screen						
 						ALL_PLAYER_OBJECTS[h].x = JSONdata.x;
 						ALL_PLAYER_OBJECTS[h].y = JSONdata.y;
@@ -603,7 +603,7 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 						//because ALL_PLAYER_OBJECTS.length =1 when only a single player
 						//obj exists but index of that player is actually 0 they are offset
 						//that means for new players their index will be the same as current ALL_PLAYER_OBJECTS.length
-						PlayerLookUp[JSONdata.id] = ALL_PLAYER_OBJECTS.length;
+						PLAYER_INDEX[JSONdata.id] = ALL_PLAYER_OBJECTS.length;
 						//create a player object for this ID
 						createAplayer(JSONdata);
 						playerExists = true;//reset
@@ -632,8 +632,8 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 							$('#myScore').html("My Score: "+ALL_PLAYER_OBJECTS[0].score);
 						}else{
 							//add 1 to players score
-							var player = ALL_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]]
-							ALL_PLAYER_OBJECTS[PlayerLookUp[JSONdata["point"].id]].score+=theCoin.pointAmount
+							var player = ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]]
+							ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]].score+=theCoin.pointAmount
 							//$(#playerID).html("player "+player number+ "score"+ player score)
 							$('#'+player.id).html("Player "+(player.id)+ " Score:"+player.score);//update the displayed score	
 						};
@@ -654,7 +654,7 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 			  if (JSONdata[Object.keys(JSONdata)[0]].id != UNIQUE_PLAYER_ID) {
 			  	var playerData = JSONdata[Object.keys(JSONdata)[0]];
 			  	//look up the players index
-			  	var playerIndex = PlayerLookUp[playerData.id];
+			  	var playerIndex = PLAYER_INDEX[playerData.id];
 			  	//get the player object for this ID
 			  	var player = ALL_PLAYER_OBJECTS[playerIndex];
 			   //replace with the updated player
