@@ -228,6 +228,7 @@ function FireBallSprite(img,height,width,x,y,totalFrames,frameRate,DeltaWidth){
   this.frameRate = frameRate;
   this.frameRateCount = 0;//used to track animation speed
   this.DeltaWidth = DeltaWidth;//[100,80,60,40]array used to adjust the width used in collision detection as coin spins, units pixels.
+  this.testMe = true;//DELETE when done, temp testing use
 };
 FireBallSprite.prototype.draw = function(x,y){
 	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
@@ -250,7 +251,6 @@ FireBallSprite.prototype.draw = function(x,y){
 				this.frameCount = 0;//reset
 			};
 	};
-	
 }
 /******************************END SPRITE CLASSES ******************/
 
@@ -321,7 +321,7 @@ function fireballObj(x,y,td) {
   this.img = fireBallImage;
   this.numFrames = 4;
   this.AnimationSpeed = 4;//lower is faster
-  this.MoveSpeed = 200;//movement speed in pixels per frame
+  this.MoveSpeed = 20;//movement speed in pixels per frame
   this.x = x;
   this.y = y;
   this.height = 16;
@@ -330,8 +330,6 @@ function fireballObj(x,y,td) {
   this.sprite = new FireBallSprite(this.img,this.height,this.width,0,0,this.numFrames,this.AnimationSpeed,[90,70,50,20,10,20,50,70,90,100]);
   this.travelDirection = td || {x:0,y:0};//x,y multipliers 0 means not travelling that direction
 };
-
-
 /************end game objects*************************/
 
 
@@ -345,9 +343,6 @@ var PlacePlayer = function () {
 var update = function (modifier) {
 	
 	//Test for collision with the coin, if yes tell server, play sound
-	//update coin size based on what is being shown
-	//theCoin.width = theCoin.sprite.DeltaWidth[theCoin.sprite.frameCount];
-	
 	if (CollisionCheck(theCoin)){
 			ChaChingSound.currentTime=0;
 			ChaChingSound.play();
@@ -361,33 +356,29 @@ var update = function (modifier) {
 	var ShotFired = false;//check if user shot fireball, tell server if you did
 	
 	if (hero.fireBallDelay <= hero.fireBallDelay_count) {
-	hero.fireBallDelay ++;//add one to the rate of fire delay
+		hero.fireBallDelay ++;//this is being used as a timer to restrict rate of fire
 	};
 	/**************MOVEMENT ******************/
 	if (38 in keysDown) { // Player holding UP
 		if (hero.y >0) {//**first - check for wall collision
 			hero.y -= hero.speed * modifier;
 		}else {};//hit wall, down' allow further movement in this direction
-		hero.direction = "up";
-	}
+		hero.direction = "up";		}
 	if (40 in keysDown) { // Player holding DOWN
 		if (hero.y < (canvas.height-hero.height) ){//check for wall
 			hero.y += hero.speed * modifier;		
 		}else {};//hit wall, down' allow further movement in this direction
-		hero.direction = "down";
-	}
+		hero.direction = "down";		}
 	if (37 in keysDown) { // Player holding LEFT
 		if (hero.x > 0){//check for wall
 			hero.x -= hero.speed * modifier;	
 		}else {};//hit wall, down' allow further movement in this direction
-		hero.direction = "left";
-	}
+		hero.direction = "left";		}
 	if (39 in keysDown) { // Player holding RIGHT
 		if (hero.x < (canvas.width-hero.width)){
 			hero.x += hero.speed * modifier;
 		}else {};//hit wall, down' allow further movement in this direction
-		hero.direction = "right";
-	}
+		hero.direction = "right";		}
 	/***********SHOOT FIREBALL*************/
 	//Key Codes:
 	//w = 87, a = 65, s = 83, d = 68
@@ -395,34 +386,40 @@ var update = function (modifier) {
 		if (hero.fireBallDelay > hero.fireBallDelay_count) {
 			if (hero.fireBallsActive.length < hero.maxFireBalls) {
 				hero.ShootFireBall(keysDown);
-				ShotFired = true;}}
-	}
+				ShotFired = true;}}	}
 	
-	/************FIREBALL LOCATION UPDATE*************/
+	/************  FIREBALL LOCATION/COLLISION UPDATES  *************/
+	/* This is why HERO needs to be in CONNECTED_PLAYER_OBJECTS[] */
 	for (var fb =0; fb <hero.fireBallsActive.length; fb++) {
 			var fireball = hero.fireBallsActive[fb];//USED TO MAKE EASY FOR HUMAN TO READ
-			fireball.x = fireball.x +(fireball.travelDirection.x *fireball.MoveSpeed*modifier);
-			fireball.y = fireball.y +(fireball.travelDirection.y*fireball.MoveSpeed*modifier);
-			if (fireball.y > canvas.height || fireball.y < 0 ) {
+			
+			//if the fireball is off screen, remove
+			if (fireball.y > canvas.height || fireball.y < 0 || fireball.x > canvas.width || fireball.x < 0) {
 				hero.fireBallsActive.splice(fb,1);//remove the fireball
-			}
-			if (fireball.x > canvas.width || fireball.x < 0) {
-				hero.fireBallsActive.splice(fb,1);//remove the fireball
-			}
-		};
+				
+			//move the fireball if it's still on the screen
+			}else {
+				fireball.x = fireball.x +(fireball.travelDirection.x *fireball.MoveSpeed*modifier);
+				fireball.y = fireball.y +(fireball.travelDirection.y*fireball.MoveSpeed*modifier);}
+				};
+				
+	//update other players fireballs
 	for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
-				for (var fb =0; fb <CONNECTED_PLAYER_OBJECTS[h].fireBallsActive.length; fb++)  {	
-					CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.draw(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x, CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y);//shoots a fire ball starting at this xy
-					CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x = CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x +(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].travelDirection.x *CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].MoveSpeed*modifier);
-					CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y = CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y +(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].travelDirection.y*CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].MoveSpeed*modifier);				
-				if (CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y > canvas.height || CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y < 0 ) {
-					hero.fireBallsActive.splice(fb,1);//remove the fireball
-				}
-				if (CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x > canvas.width || CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x < 0) {
+			for (var fb =0; fb <CONNECTED_PLAYER_OBJECTS[h].fireBallsActive.length; fb++)  {
+					if (CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y > canvas.height || CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y < 0 || CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x > canvas.width || CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x < 0) {
 					CONNECTED_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
-			}		
-		}
-	}		
+					}else	{
+						CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x = CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x +(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].travelDirection.x *CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].MoveSpeed*modifier);
+						CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y = CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y +(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].travelDirection.y*CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].MoveSpeed*modifier);					
+						//Check if other players fireball hit you		
+						console.log("check FB");				
+						var checkhit = CollisionCheck(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb]);//{console.log("hit")};
+						console.log(checkhit);
+						};								
+			};			
+		};
+
+		
 	
 	if (Object.keys(keysDown).length<1 && hero.direction !== "default"){
 		hero.direction = "default"; /* USED SO THIS WON'T TRIGGER EVERY FRAME */
@@ -443,14 +440,15 @@ var update = function (modifier) {
 
 /***************** COLLISION CHECK FUNCTION *************/
 function CollisionCheck (obj,obj2) {
-//Collision check for SPRITE based objects!
+
+		//Collision check for SPRITE based objects!
 		obj2 = obj2 || hero;// obj2 is set to player as default if no obj2 arg passed
-		//console.log("coin:"+obj.sprite.width);
+	if (obj.sprite.testMe) {console.log(obj,obj2)};	
 		//determine if collision happened.  Check x axis, then y axis
-		if ((obj2.x <= obj.x + obj.sprite.height) &&
-			(obj.x <= obj2.x + obj2.sprite.height) &&
-			(obj2.y <= obj.y + obj2.sprite.width) &&		
-			(obj.y <= obj2.y + obj.sprite.width)){return true;
+		if ((obj2.x <= obj.x + obj.sprite.width) &&
+			(obj.x <= obj2.x + obj2.sprite.width) &&
+			(obj2.y <= obj.y + obj2.sprite.height) &&		
+			(obj.y <= obj2.y + obj.sprite.height)){return true;
 			}else{return false;};
 };
 // Draw everything
@@ -465,10 +463,12 @@ var render = function () {
 	if (PlayerImagesReady && fireBallImgReady) {
 		//BOUNDING RECT FOR COLLISION DETECT TESTING
 		ctx.strokeRect(hero.x,hero.y,hero.sprite.width,hero.sprite.height); 
+		
+		//render the local player
 		hero.sprite.draw(hero.x, hero.y,hero.direction, hero.id);
-		console.log(hero.fireBallsActive.length);
+		
+		//render any projectiles
 		for (var fb =0; fb <hero.fireBallsActive.length; fb++) {
-			console.log("fireball");
 			hero.fireBallsActive[fb].sprite.draw(hero.fireBallsActive[fb].x, hero.fireBallsActive[fb].y);//shoots a fire ball starting at this xy
 		};
 		//IF Other players are connected draw them
@@ -476,6 +476,7 @@ var render = function () {
 			for (var h=0;h<CONNECTED_PLAYER_OBJECTS.length;h++) {
 				CONNECTED_PLAYER_OBJECTS[h].sprite.draw(CONNECTED_PLAYER_OBJECTS[h].x, CONNECTED_PLAYER_OBJECTS[h].y,CONNECTED_PLAYER_OBJECTS[h].direction,CONNECTED_PLAYER_OBJECTS[h].id);
 				for (var fb =0; fb <CONNECTED_PLAYER_OBJECTS[h].fireBallsActive.length; fb++)  {	
+				ctx.strokeRect(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.width,CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.height); 
 					CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].sprite.draw(CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].x, CONNECTED_PLAYER_OBJECTS[h].fireBallsActive[fb].y);//shoots a fire ball starting at this xy
 				}			
 			}		
@@ -542,15 +543,10 @@ $(document).ready(function(){
 	
 	//if user selects an avatar image
 	$('button').click( function(e) {
-		//get selection value
-		var index = parseInt($(this).prop("value"));
-		
+
 		//set what index in the player images is being used
-	//	hero.imgIndex = index;
-		
-		//assign the image to the player
-//		hero.playerImg = PLAYER_IMAGE_HOLDER[index];
-		 
+		var index = parseInt($(this).prop("value"));
+	 
 		//remake player object with new image color
    	hero = new PlayerObjBuilder(UNIQUE_PLAYER_ID,hero.x,hero.y,60,60,index);
 	   
@@ -564,7 +560,7 @@ $(document).ready(function(){
 		
 			var JSONdata = JSON.parse(msg);
 			/*
-			99% of the time inbound messages are x,y movements from other players
+			99% of the time inbound messages are x,y movements or projectiles from other players
 			player movements come in with one of the keys = 'id'
 			check that the msg has an ID and that the id isn't the local players ID
 			*/
@@ -626,8 +622,8 @@ $(document).ready(function(){
 							$('#'+player.id).html("Player "+(player.id)+ " Score:"+player.score);//update the displayed score	
 						};
 					};
-          //NOT ACTIVE!
-          //eventually something like this needed to remove inactive or disconnected players
+          	//NOT ACTIVE!
+            //eventually something like this needed to remove inactive or disconnected players
 				if (msgkey === 'rem'){
 					console.log(CONNECTED_PLAYER_OBJECTS);
 					for (var h=0;h<=CONNECTED_PLAYER_OBJECTS.length;h++) {
