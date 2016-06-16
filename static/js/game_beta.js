@@ -483,7 +483,7 @@ var render = function () {
 	//if (pRready && pGready) {
 	if (PlayerImagesReady && FireballImagesReady) {
 		//BOUNDING RECT FOR COLLISION DETECT TESTING	
-		ctx.strokeRect(ALL_PLAYER_OBJECTS[0].x,ALL_PLAYER_OBJECTS[0].y,ALL_PLAYER_OBJECTS[0].sprite.width,ALL_PLAYER_OBJECTS[0].sprite.height); 
+		//ctx.strokeRect(ALL_PLAYER_OBJECTS[0].x,ALL_PLAYER_OBJECTS[0].y,ALL_PLAYER_OBJECTS[0].sprite.width,ALL_PLAYER_OBJECTS[0].sprite.height); 
 		for (var h=0;h<ALL_PLAYER_OBJECTS.length;h++) {
 			//render the local player
 			ALL_PLAYER_OBJECTS[h].sprite.draw(ALL_PLAYER_OBJECTS[h].x, ALL_PLAYER_OBJECTS[h].y,ALL_PLAYER_OBJECTS[h].direction, ALL_PLAYER_OBJECTS[h].id);
