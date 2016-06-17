@@ -404,12 +404,14 @@ var update = function (modifier) {
 				fireball.x = fireball.x +(fireball.travelDirection.x *fireball.MoveSpeed*modifier);
 				fireball.y = fireball.y +(fireball.travelDirection.y*fireball.MoveSpeed*modifier);
 				
-				//check if the localplayers fireball hit another player remove it if it did
+				//check if the local player's fireball hit another player
 				if(h === 0){
 					for (var z=1;z<ALL_PLAYER_OBJECTS.length;z++) {
 						if(CollisionCheck(fireball,ALL_PLAYER_OBJECTS[z])){
 							ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
-							
+							//everyplayer checks if they were hit by another player's fireball. if they are they tell everyone 'hit'
+							//don't need to broadcast when local player hits someone, the person who gets hit does the broadcast.
+							//that is why there is no mySocket.send() here
 							};
 						};
 					};
@@ -419,8 +421,10 @@ var update = function (modifier) {
 			if(h !== 0){
 				if(CollisionCheck(ALL_PLAYER_OBJECTS[h].fireBallsActive[fb])){
 					ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
-					ALL_PLAYER_OBJECTS[0].score -= fireball.damage};
-					mySocket.send(JSON.stringify({"hit":{"id":UNIQUE_PLAYER_ID,"pid":ALL_PLAYER_OBJECTS[h].id}}));
+					ALL_PLAYER_OBJECTS[0].score -= fireball.damage;
+					UpdateScoreHTML(ALL_PLAYER_OBJECTS[0]);//update score display
+					//tell other players you were hit, send your id and 'pid' which is the id of person who hit you.
+					mySocket.send(JSON.stringify({"hit":{"id":UNIQUE_PLAYER_ID,"pid":ALL_PLAYER_OBJECTS[h].id}}));};
 			};
 		};
 	};
@@ -433,16 +437,16 @@ ALL_PLAYER_OBJECTS[0].x = Math.floor(ALL_PLAYER_OBJECTS[0].x);
 
 	if (Object.keys(keysDown).length<1 && ALL_PLAYER_OBJECTS[0].direction !== "default"){
 		ALL_PLAYER_OBJECTS[0].direction = "default"; /* USED SO THIS WON'T TRIGGER EVERY FRAME */
-		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction}}));
+		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'s':ALL_PLAYER_OBJECTS[0].score}}));
 	}
 	//If player has made a move, tell the server so movement can be broadcast to other connected players
 	//ALL_PLAYER_OBJECTS[0].imgIndex is broadcast so others know what image to use for you if you are new to the game.
 	//should change this to only being broadcast on connection...TODO
 	if (PreviousFramePosition_X !== ALL_PLAYER_OBJECTS[0].x || PreviousFramePosition_Y !== ALL_PLAYER_OBJECTS[0].y || ShotFired) {
 		if (ShotFired) {
-			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':keysDown}}));
+			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':keysDown,'s':ALL_PLAYER_OBJECTS[0].score}}));
 		}else {
-			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':false}}));
+			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':false,'s':ALL_PLAYER_OBJECTS[0].score}}));
 		}	
 	};
 };
@@ -484,7 +488,7 @@ var render = function () {
 		}
 
 	}
-	/**************End player sprite render**************/
+	/**************End player render**************/
 	if (coinImgReady) {
 		//BOUNDING RECT FOR COLLISION DETECT TESTING
 		//ctx.strokeRect(theCoin.x,theCoin.y,theCoin.sprite.width,theCoin.sprite.height); 
@@ -520,19 +524,23 @@ function createAplayer(JSONdata) {
 		 			var Element = document.createElement("div");
 		 			Element.setAttribute('id',JSONdata.id);
 		 			Element.setAttribute('class',"score");
-		 			Element.innerHTML = "Player "+(ALL_PLAYER_OBJECTS.length)+" Score: 0";
+		 			//Element.innerHTML = "Player "+(ALL_PLAYER_OBJECTS.length)+" Score: 0";
+					//Element.innerHTML = "Player "+ JSONdata.id +" Score:"+JSONdata.s;
 		 			document.getElementById('scoreBoard').appendChild(Element);
-		 			
+		 			UpdateScoreHTML(JSONdata);
 		 			//put new player in the look up object, 
 		 			//assign it's index in the ALL_PLAYER_OBJECTS as value
 		 			PLAYER_INDEX[JSONdata.id] = ALL_PLAYER_OBJECTS.length-1;
 		 			
 		 };
+		 
 function UpdateScoreHTML(player) {
-	console.log(player.id)
-	var player = player || false;
-	if (!player) {
-		$('#'+player.id).html("Player "+player.id+ " Score:"+player.score);//update the displayed score	
+	//update the displayed 
+	if (player.id !== UNIQUE_PLAYER_ID) {
+		if(player.score){
+			$('#'+player.id).html("Player "+ player.id + " Score:"+player.score);}
+		else{
+			$('#'+player.id).html("Player "+ player.id + " Score:"+player.s);}
 	}else {
 		$('#myScore').html("My Score: "+ALL_PLAYER_OBJECTS[0].score);
 	};
@@ -552,7 +560,7 @@ ALL_PLAYER_OBJECTS[0] = new PlayerObjBuilder(UNIQUE_PLAYER_ID,0,0,60,60,0);
 console.log(ALL_PLAYER_OBJECTS[0]);
 	/* send startup position to server so it can alert other players*/
 	/* round x and y to reduce network traffic*/
-	mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.floor(ALL_PLAYER_OBJECTS[0].x),'y':Math.floor(ALL_PLAYER_OBJECTS[0].y),'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction}}));
+	mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.floor(ALL_PLAYER_OBJECTS[0].x),'y':Math.floor(ALL_PLAYER_OBJECTS[0].y),'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'s':ALL_PLAYER_OBJECTS[0].score}}));
 	
 	//if user selects an avatar image
 	$('button').click( function(e) {
@@ -640,14 +648,14 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 					//note that .id is who got hit and .pid is who did the hitting
 					//right now pid isn't used but if you wanted to give points for hits, use it
 					if (JSONdata[msgkey].id===UNIQUE_PLAYER_ID){
-							$('#myScore').html("My Score: "+ALL_PLAYER_OBJECTS[0].score);
-							//UpdateScoreHTML();//update the displayed score	
+							//$('#myScore').html("My Score: "+ALL_PLAYER_OBJECTS[0].score);
+							//UpdateScoreHTML(ALL_PLAYER_OBJECTS[0]);//update the displayed score	
 						}else{
 							//update displayed players score
 							var player = ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]]
 							ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]].score -= ALL_PLAYER_OBJECTS[0].fireBallDmg;
-							$('#'+player.id).html("Player "+player.id+ " Score:"+player.score);//update the displayed score	
-							//UpdateScoreHTML(player);//update the displayed score	
+							//$('#'+player.id).html("Player "+player.id+ " Score:"+player.score);//update the displayed score	
+							UpdateScoreHTML(player);//update the displayed score	
 						};
 				};
           	//NOT ACTIVE!
