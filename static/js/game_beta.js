@@ -81,7 +81,9 @@ PlayerImagesReady = LoadImages(["static/images/link_sprite_green.png",
 "static/images/link_sprite_gray.png","static/images/link_sprite_yellow.png"],PLAYER_IMAGE_HOLDER);
 
 //Load fireball images
-FireballImagesReady = LoadImages(["static/images/fireball_red.png"],FIREBALL_IMAGE_HOLDER);
+FireballImagesReady = LoadImages(["static/images/fireball_green.png",
+"static/images/fireball_red.png","static/images/fireball_blue.png",
+"static/images/fireball_gray.png","static/images/fireball_yellow.png"],FIREBALL_IMAGE_HOLDER);
 
 //load COIN Sprite image
 var coinImage = new Image();
@@ -277,11 +279,11 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
 		 "right":{"x":0,"y":462,"frames":10,"layout":"horz","frameRate":5},
 		 "left":{"x":0,"y":330,"frames":10,"layout":"horz","frameRate":5}});
   this.direction="default";
-  //this.fireBall = false;//indicate there are fireballs active on screen
+  this.fireBallDmg = 10;//how much dmg your fire ball does
   this.fireBallsActive =[];//array of active fireballs on screen
-  this.fireBallDelay = 0;//rate of fire delay
-  this.fireBallDelay_count = 15;//frames that need to pass before next shot can happen
-  this.maxFireBalls = 3;//max number of onscreen fireballs
+  this.fireBallDelay = 0;//used in rate of fire delay counter
+  this.fireBallDelay_count = 20;//frames that need to pass before next shot can happen
+  this.maxFireBalls = 10;//max number of onscreen fireballs
   this.ShootFireBall = function (kd) {
   		var _direction ={x:0,y:0};//x,y of fireball will be multiplied by these x,y and it's MoveSpeed
 		/*Key Codes:
@@ -290,7 +292,7 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
 		if ( 65 in kd) {_direction.x = -1;};
 		if ( 83 in kd) {_direction.y = 1;};
 		if ( 68 in kd) {_direction.x = 1;};
-     this.fireBallsActive.push(new fireballObj(this.fireballImg,this.x+this.width/2,this.y+this.height/2,_direction));
+     this.fireBallsActive.push(new fireballObj(this.fireballImg,this.x+this.width/2,this.y+this.height/2,_direction,this.fireBallDmg));
      this.fireBall = true;//active fireball
 	  this.fireBallDelay = 0;//reset delay
   };
@@ -313,7 +315,7 @@ function coinObj(img,x,y,h,w,numFrames,speed) {
   this.pointAmount = 100;  //point award for getting the coin
 };
 //fireball object builder
-function fireballObj(img,x,y,td) {
+function fireballObj(img,x,y,td,damage) {
   this.img = img;
   this.numFrames = 4;
   this.AnimationSpeed = 4;//lower is faster
@@ -325,11 +327,9 @@ function fireballObj(img,x,y,td) {
   //                FireBallSprite(img,height,width,x,y,totalFrames,frameRate,DeltaWidth)
   this.sprite = new FireBallSprite(this.img,this.height,this.width,0,0,this.numFrames,this.AnimationSpeed,[90,70,50,20,10,20,50,70,90,100]);
   this.travelDirection = td || {x:0,y:0};//x,y multipliers 0 means not travelling that direction
-  this.damage = 10;
+  this.damage = 10 || damage;
 };
 /************end game objects*************************/
-
-
 // place player when first starting
 var PlacePlayer = function () {
 	ALL_PLAYER_OBJECTS[0].x = canvas.width / 2;
@@ -409,6 +409,7 @@ var update = function (modifier) {
 					for (var z=1;z<ALL_PLAYER_OBJECTS.length;z++) {
 						if(CollisionCheck(fireball,ALL_PLAYER_OBJECTS[z])){
 							ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
+							
 							};
 						};
 					};
@@ -419,28 +420,17 @@ var update = function (modifier) {
 				if(CollisionCheck(ALL_PLAYER_OBJECTS[h].fireBallsActive[fb])){
 					ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
 					ALL_PLAYER_OBJECTS[0].score -= fireball.damage};
+					mySocket.send(JSON.stringify({"hit":{"id":UNIQUE_PLAYER_ID,"pid":ALL_PLAYER_OBJECTS[h].id}}));
 			};
 		};
 	};
-    /*****************************/
-	//*******update other players fireballs
-	/*for (var h=0;h<ALL_PLAYER_OBJECTS.length;h++) {
-			for (var fb =0; fb <ALL_PLAYER_OBJECTS[h].fireBallsActive.length; fb++)  {
-					if (ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].y > canvas.height || ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].y < 0 || ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].x > canvas.width || ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].x < 0) {
-					ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
-					}else	{
-						ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].x = ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].x +(ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].travelDirection.x *ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].MoveSpeed*modifier);
-						ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].y = ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].y +(ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].travelDirection.y*ALL_PLAYER_OBJECTS[h].fireBallsActive[fb].MoveSpeed*modifier);					
-						//Check if other players fireball hit you					
-						if(CollisionCheck(ALL_PLAYER_OBJECTS[h].fireBallsActive[fb])){
-								ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
-								ALL_PLAYER_OBJECTS[0].score -= fireball.damage};
-						};								
-			};			
-		};
-
-	*/	
 	
+/***************ROUND PLAYER XY FOR OPTIMIZATION*******************/
+//https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas
+ALL_PLAYER_OBJECTS[0].y = Math.floor(ALL_PLAYER_OBJECTS[0].y);
+ALL_PLAYER_OBJECTS[0].x = Math.floor(ALL_PLAYER_OBJECTS[0].x);
+/**********************************/
+
 	if (Object.keys(keysDown).length<1 && ALL_PLAYER_OBJECTS[0].direction !== "default"){
 		ALL_PLAYER_OBJECTS[0].direction = "default"; /* USED SO THIS WON'T TRIGGER EVERY FRAME */
 		mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction}}));
@@ -450,9 +440,9 @@ var update = function (modifier) {
 	//should change this to only being broadcast on connection...TODO
 	if (PreviousFramePosition_X !== ALL_PLAYER_OBJECTS[0].x || PreviousFramePosition_Y !== ALL_PLAYER_OBJECTS[0].y || ShotFired) {
 		if (ShotFired) {
-			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(ALL_PLAYER_OBJECTS[0].x),'y':Math.round(ALL_PLAYER_OBJECTS[0].y),'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':keysDown}}));
+			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':keysDown}}));
 		}else {
-			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(ALL_PLAYER_OBJECTS[0].x),'y':Math.round(ALL_PLAYER_OBJECTS[0].y),'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':false}}));
+			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':false}}));
 		}	
 	};
 };
@@ -480,8 +470,6 @@ var render = function () {
 	//ctx.drawImage(ALL_PLAYER_OBJECTS[0].playerImg, 0, 0);
 	
 	/**********PLAYER SPRITES********/
-	//main player
-	//if (pRready && pGready) {
 	if (PlayerImagesReady && FireballImagesReady) {
 		//BOUNDING RECT FOR COLLISION DETECT TESTING	
 		//ctx.strokeRect(ALL_PLAYER_OBJECTS[0].x,ALL_PLAYER_OBJECTS[0].y,ALL_PLAYER_OBJECTS[0].sprite.width,ALL_PLAYER_OBJECTS[0].sprite.height); 
@@ -540,7 +528,15 @@ function createAplayer(JSONdata) {
 		 			PLAYER_INDEX[JSONdata.id] = ALL_PLAYER_OBJECTS.length-1;
 		 			
 		 };
-
+function UpdateScoreHTML(player) {
+	console.log(player.id)
+	var player = player || false;
+	if (!player) {
+		$('#'+player.id).html("Player "+player.id+ " Score:"+player.score);//update the displayed score	
+	}else {
+		$('#myScore').html("My Score: "+ALL_PLAYER_OBJECTS[0].score);
+	};
+};
 // Cross-browser support for requestAnimationFrame
 var w = window;
 requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
@@ -556,7 +552,7 @@ ALL_PLAYER_OBJECTS[0] = new PlayerObjBuilder(UNIQUE_PLAYER_ID,0,0,60,60,0);
 console.log(ALL_PLAYER_OBJECTS[0]);
 	/* send startup position to server so it can alert other players*/
 	/* round x and y to reduce network traffic*/
-	mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.round(ALL_PLAYER_OBJECTS[0].x),'y':Math.round(ALL_PLAYER_OBJECTS[0].y),'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction}}));
+	mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':Math.floor(ALL_PLAYER_OBJECTS[0].x),'y':Math.floor(ALL_PLAYER_OBJECTS[0].y),'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction}}));
 	
 	//if user selects an avatar image
 	$('button').click( function(e) {
@@ -568,7 +564,7 @@ console.log(ALL_PLAYER_OBJECTS[0]);
    	ALL_PLAYER_OBJECTS[0] = new PlayerObjBuilder(UNIQUE_PLAYER_ID,ALL_PLAYER_OBJECTS[0].x,ALL_PLAYER_OBJECTS[0].y,60,60,index);
 	   
 	   //update to others that you have changed your image
-		mySocket.send(JSON.stringify({"ava":{'id':UNIQUE_PLAYER_ID,'x':Math.round(ALL_PLAYER_OBJECTS[0].x),'y':Math.round(ALL_PLAYER_OBJECTS[0].y),'ix':index,'d':ALL_PLAYER_OBJECTS[0].direction}}));//tell server changed avatar color
+		mySocket.send(JSON.stringify({"ava":{'id':UNIQUE_PLAYER_ID,'x':Math.floor(ALL_PLAYER_OBJECTS[0].x),'y':Math.floor(ALL_PLAYER_OBJECTS[0].y),'ix':index,'d':ALL_PLAYER_OBJECTS[0].direction}}));//tell server changed avatar color
 		
 	});
 
@@ -631,14 +627,29 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 						if (JSONdata[msgkey].id===UNIQUE_PLAYER_ID){
 							ALL_PLAYER_OBJECTS[0].score+=theCoin.pointAmount;
 							$('#myScore').html("My Score: "+ALL_PLAYER_OBJECTS[0].score);
+							//UpdateScoreHTML();//update the displayed score	
 						}else{
 							//add 1 to players score
 							var player = ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]]
 							ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]].score+=theCoin.pointAmount
-							//$(#playerID).html("player "+player number+ "score"+ player score)
-							$('#'+player.id).html("Player "+(player.id)+ " Score:"+player.score);//update the displayed score	
+							$('#'+player.id).html("Player "+player.id+ " Score:"+player.score);//update the displayed score	
+							//UpdateScoreHTML(player);//update the displayed score	
 						};
 					};
+				if (msgkey === 'hit'){
+					//note that .id is who got hit and .pid is who did the hitting
+					//right now pid isn't used but if you wanted to give points for hits, use it
+					if (JSONdata[msgkey].id===UNIQUE_PLAYER_ID){
+							$('#myScore').html("My Score: "+ALL_PLAYER_OBJECTS[0].score);
+							//UpdateScoreHTML();//update the displayed score	
+						}else{
+							//update displayed players score
+							var player = ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]]
+							ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]].score -= ALL_PLAYER_OBJECTS[0].fireBallDmg;
+							$('#'+player.id).html("Player "+player.id+ " Score:"+player.score);//update the displayed score	
+							//UpdateScoreHTML(player);//update the displayed score	
+						};
+				};
           	//NOT ACTIVE!
             //eventually something like this needed to remove inactive or disconnected players
 				if (msgkey === 'rem'){
