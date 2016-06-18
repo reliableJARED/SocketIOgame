@@ -9,8 +9,15 @@ http://www.williammalone.com/articles/create-html5-canvas-javascript-sprite-anim
 //Global socket connection instance
 mySocket = io.connect();//create new websocket, 
 
+//GAME SOUNDS
 var ChaChingSound = new Audio();
 ChaChingSound.src = ('static/sounds/ChaChing.mp3');//http://soundbible.com/mp3/Cash%20Register%20Cha%20Ching-SoundBible.com-184076484.mp3
+
+var whackSound = new Audio();
+whackSound.src = ('static/sounds/whack.mp3');//http://soundbible.com/mp3/Cash%20Register%20Cha%20Ching-SoundBible.com-184076484.mp3
+
+var shootSound = new Audio();
+shootSound.src = ('static/sounds/laserSound.mp3');//http://soundbible.com/mp3/Cash%20Register%20Cha%20Ching-SoundBible.com-184076484.mp3
 
 var ALL_PLAYER_OBJECTS =[];//container for any connected players, local player always index 0
 var PLAYER_INDEX = {};//used to quickly look up player index location in ALL_PLAYER_OBJECTS array
@@ -44,7 +51,7 @@ var canvas = document.createElement("canvas");
 
 var ctx = canvas.getContext("2d");
 //assign canvas dimensions
-canvas.width = 580;//512
+canvas.width = 800;//512
 canvas.height = 580;//480
 $('#canvasHolder').append(canvas);
 
@@ -407,6 +414,9 @@ var update = function (modifier) {
 	if (87 in keysDown || 65 in keysDown ||83 in keysDown ||68 in keysDown ) {
 		if (ALL_PLAYER_OBJECTS[0].fireBallDelay > ALL_PLAYER_OBJECTS[0].fireBallDelay_count) {
 			if (ALL_PLAYER_OBJECTS[0].fireBallsActive.length < ALL_PLAYER_OBJECTS[0].maxFireBalls) {
+				//play shoot sound
+				shootSound.currentTime=0;
+				shootSound.play();
 				ALL_PLAYER_OBJECTS[0].ShootFireBall(keysDown);
 				ShotFired = true;}}}
 	
@@ -433,6 +443,9 @@ var update = function (modifier) {
 				if(h === 0){
 					for (var z=1;z<ALL_PLAYER_OBJECTS.length;z++) {
 						if(CollisionCheck(fireball,ALL_PLAYER_OBJECTS[z])){
+							//play hit sound
+							whackSound.currentTime=0;
+							whackSound.play();
 							ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
 							//everyplayer checks if they were hit by another player's fireball. if they are they tell everyone 'hit'
 							//don't need to broadcast when local player hits someone, the person who gets hit does the broadcast.
@@ -451,7 +464,10 @@ var update = function (modifier) {
 			//check if another player hit local player with their fireball
 			if(h !== 0){
 				if(CollisionCheck(ALL_PLAYER_OBJECTS[h].fireBallsActive[fb])){
-					console.log('i got hit');
+					//play hit sound
+					whackSound.currentTime=0;
+					whackSound.play();
+					//update fireball inventory and score
 					ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
 					ALL_PLAYER_OBJECTS[0].score -= fireball.damage;
 					UpdateScoreHTML(ALL_PLAYER_OBJECTS[0]);//update score display
@@ -596,16 +612,31 @@ function UpdateScoreHTML(player) {
 };
 
 function EndTheGame(id) {
-	$('#canvasHolder').css('display','none');
+	//make new canvas
+	var Wcanvas = document.createElement("canvas");
+	var Wctx = Wcanvas.getContext("2d");
+	//change canvas dimensions
+	Wcanvas.width = 60;//512
+	Wcanvas.height = 60;//480
+//	$('#scoreBoard').append(Wcanvas);
+		$('#canvasHolder').css('display','none');
 		$('#showHideNames').css('display','none');
-			$('#avatarSelect').css('display','none');
-	 var Element = document.createElement("div");
+		$('#avatarSelect').css('display','none');
+		 var Element = document.createElement("div");
 		Element.setAttribute('id','win');
 		Element.setAttribute('class',"score");
-		Element.innerHTML = "Player "+id+" WINS! <br> Press F5 To Play Again";
 		$('#scoreBoard').empty();
 		document.getElementById('scoreBoard').appendChild(Element);
+		document.getElementById('scoreBoard').appendChild(Wcanvas);
+	if (id === UNIQUE_PLAYER_ID) {
+			$('#win').html("You Win! <br> Press F5 To Play Again");
+			Wctx.drawImage(ALL_PLAYER_OBJECTS[0].playerImg,0,0);//0,2,60,60,Wcanvas.width/2, Wcanvas.height,60,60);
+	}else{
+			$('#win').html("Player "+id+" WINS! <br> Press F5 To Play Again");
+			Wctx.drawImage(ALL_PLAYER_OBJECTS[PLAYER_INDEX[id]].playerImg,0,0);//.playerImg,0,2,60,60,Wcanvas.width/2, Wcanvas.height,60,60);
+			}
 };
+
 // Cross-browser support for requestAnimationFrame
 var w = window;
 requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
