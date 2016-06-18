@@ -44,8 +44,8 @@ var canvas = document.createElement("canvas");
 
 var ctx = canvas.getContext("2d");
 //assign canvas dimensions
-canvas.width = 512;
-canvas.height = 480;
+canvas.width = 580;//512
+canvas.height = 580;//480
 $('#canvasHolder').append(canvas);
 
 // Background image
@@ -91,13 +91,23 @@ var coinImgReady =false;
 coinImage.onload = function() {   
      coinImgReady = true;
 };	
-coinImage.src = "static/images/coin.png";						
+coinImage.src = "static/images/coin.png";		
+
+//load Stump image
+var stumpImage = new Image();
+var stumpImgReady =false;
+stumpImage.onload = function() {   
+     stumpImgReady = true;
+};	
+stumpImage.src = "static/images/stump.png";						
 /*************end images************************/
 
 
 
 /***********SPRITE CLASSES***************************
-***************************************************/
+			  /*************/
+			  
+			  //PLAYER
 function Sprite(img,height,width,keyFrames){
   this.img = img;
   this.width = width;
@@ -106,7 +116,7 @@ function Sprite(img,height,width,keyFrames){
   this.rateCount = 0;//used to track speed of animation
   this.current = 'default';//used to trach what keyFrame is currently being used
   this.keyFrames = keyFrames;
-  /****** keyFrames ***********
+  /****** keyFrames explained ***********
   {"up":{x,y,frames,layout,frameRate}} 
   key: in this example "up" specifies to use associated sprite rules
   x:upper left x coord of corner on canvas
@@ -170,7 +180,8 @@ Sprite.prototype.draw = function (x,y,direction,hoverText,sx,sy) {
 			this.frameCount = 1;//reset	repeat sprite from beginning
 	}}
 };
-
+/********************************************/
+ 				//COIN
 function CoinSprite(img,height,width,x,y,totalFrames,frameRate,DeltaWidth){
   this.img = img;//the coin image
   this.x = x;//starting x position on sprite sheet, typically it's 0
@@ -204,8 +215,8 @@ CoinSprite.prototype.draw = function(x,y,sx,sy){
 		this.h,//The height of the keyFrame image
 		x,//x coordinate where to place the image on the canvas
 		y,//y coordinate where to place the image on the canvas
-		sx,//The width to stretch or reduce the image
-		sy//The height to stretch or reduce the image
+		sx,//The width to stretch or reduce the image, note this SLOWS DOWN RENDERING see MDN website
+		sy//The height to stretch or reduce the image note this SLOWS DOWN RENDERING see MDN website
 	);
 	this.frameRateCount++;
 	if (this.frameRateCount>=this.frameRate) {
@@ -217,7 +228,8 @@ CoinSprite.prototype.draw = function(x,y,sx,sy){
 	};
 	
 }
-
+/********************************************/
+ 				//FIREBALL
 function FireBallSprite(img,height,width,x,y,totalFrames,frameRate,DeltaWidth){
   this.img = img;//the fb image
   this.x = x;//starting x position on sprite sheet, typically it's 0
@@ -253,12 +265,15 @@ FireBallSprite.prototype.draw = function(x,y){
 			};
 	};
 }
-/******************************END SPRITE CLASSES ******************/
+/**************END SPRITE CLASSES ******************/
 
 // **************GAME OBJECTS********************
 // coinObj(img,x-canvas,y-canvas,h-sprite,w-sprite,numFrames in sprite,animation speed-lower is faster)
 var theCoin = new coinObj(coinImage,-100,-100,100,100,9,4);//default loc off screen until server sends loc
 console.log(theCoin);
+
+var STUMPS = []; //build stumps from coords from server
+
 
 // player object builder for ***NETWORK CONNECTED PLAYERS****
 function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
@@ -295,7 +310,7 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
      this.fireBallsActive.push(new fireballObj(this.fireballImg,this.x+this.width/2,this.y+this.height/2,_direction,this.fireBallDmg));
      this.fireBall = true;//active fireball
 	  this.fireBallDelay = 0;//reset delay
-  };
+  	};
 };
 
 
@@ -329,7 +344,16 @@ function fireballObj(img,x,y,td,damage) {
   this.travelDirection = td || {x:0,y:0};//x,y multipliers 0 means not travelling that direction
   this.damage = 10 || damage;
 };
+
+function stumpObj(img,x,y) {
+	this.img = img;
+	this.x = x;
+	this.y = y;
+	this.sprite ={height:66,width:75};//need this style because of how collisionCheck() works
+};
 /************end game objects*************************/
+
+
 // place player when first starting
 var PlacePlayer = function () {
 	ALL_PLAYER_OBJECTS[0].x = canvas.width / 2;
@@ -345,12 +369,12 @@ var update = function (modifier) {
 			ChaChingSound.play();
 			//console.log("point"); 
 			//console.log(theCoin.cid);
-			mySocket.send(JSON.stringify({"point":{"id":UNIQUE_PLAYER_ID,"cid":theCoin.cid}}));
+			mySocket.send(JSON.stringify({"point":{"id":UNIQUE_PLAYER_ID,"cid":theCoin.cid,"s":ALL_PLAYER_OBJECTS[0].score}}));
 	};
 	
 	var PreviousFramePosition_X = ALL_PLAYER_OBJECTS[0].x;
 	var PreviousFramePosition_Y = ALL_PLAYER_OBJECTS[0].y;
-	var ShotFired = false;//check if user shot fireball, tell server if you did
+	var ShotFired = false;//check if user shot fireball, used tell server if you did
 	
 	if (ALL_PLAYER_OBJECTS[0].fireBallDelay <= ALL_PLAYER_OBJECTS[0].fireBallDelay_count) {
 		ALL_PLAYER_OBJECTS[0].fireBallDelay ++;//this is being used as a timer to restrict rate of fire
@@ -376,6 +400,7 @@ var update = function (modifier) {
 			ALL_PLAYER_OBJECTS[0].x += ALL_PLAYER_OBJECTS[0].speed * modifier;
 		}else {};//hit wall, down' allow further movement in this direction
 		ALL_PLAYER_OBJECTS[0].direction = "right";		}
+		
 	/***********SHOOT FIREBALL*************/
 	//Key Codes:
 	//w = 87, a = 65, s = 83, d = 68
@@ -383,7 +408,7 @@ var update = function (modifier) {
 		if (ALL_PLAYER_OBJECTS[0].fireBallDelay > ALL_PLAYER_OBJECTS[0].fireBallDelay_count) {
 			if (ALL_PLAYER_OBJECTS[0].fireBallsActive.length < ALL_PLAYER_OBJECTS[0].maxFireBalls) {
 				ALL_PLAYER_OBJECTS[0].ShootFireBall(keysDown);
-				ShotFired = true;}}	}
+				ShotFired = true;}}}
 	
 	/************  FIREBALL LOCATION/COLLISION UPDATES  *************/
 	/* Local player = ALL_PLAYER_OBJECTS[0] */
@@ -398,13 +423,13 @@ var update = function (modifier) {
 			//if the fireball is off screen, remove
 			if (fireball.y > canvas.height || fireball.y < 0 || fireball.x > canvas.width || fireball.x < 0) {
 					ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
-			}
+			
 			//fireball is onscreen, update movement
-			else {
+			}else {
 				fireball.x = fireball.x +(fireball.travelDirection.x *fireball.MoveSpeed*modifier);
 				fireball.y = fireball.y +(fireball.travelDirection.y*fireball.MoveSpeed*modifier);
 				
-				//check if the local player's fireball hit another player
+				//check if the local player's fireball hit another player or stump
 				if(h === 0){
 					for (var z=1;z<ALL_PLAYER_OBJECTS.length;z++) {
 						if(CollisionCheck(fireball,ALL_PLAYER_OBJECTS[z])){
@@ -414,18 +439,34 @@ var update = function (modifier) {
 							//that is why there is no mySocket.send() here
 							};
 						};
+					//check if fireball hit a stump
+					for (var z=0;z<STUMPS.length;z++) {
+						if (CollisionCheck(fireball,STUMPS[z])) {
+							ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
+							}
+						}
 					};
 				};
 				
 			//check if another player hit local player with their fireball
 			if(h !== 0){
 				if(CollisionCheck(ALL_PLAYER_OBJECTS[h].fireBallsActive[fb])){
+					console.log('i got hit');
 					ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
 					ALL_PLAYER_OBJECTS[0].score -= fireball.damage;
 					UpdateScoreHTML(ALL_PLAYER_OBJECTS[0]);//update score display
+					
 					//tell other players you were hit, send your id and 'pid' which is the id of person who hit you.
 					mySocket.send(JSON.stringify({"hit":{"id":UNIQUE_PLAYER_ID,"pid":ALL_PLAYER_OBJECTS[h].id}}));};
+					
+					//check if fireball hit a stump
+					for (var z=0;z<STUMPS.length;z++) {
+						if (CollisionCheck(fireball,STUMPS[z])) {
+							ALL_PLAYER_OBJECTS[h].fireBallsActive.splice(fb,1);//remove the fireball
+							}
+						}
 			};
+			
 		};
 	};
 	
@@ -470,7 +511,14 @@ function CollisionCheck (obj,obj2) {
 var render = function () {
 
 	//background
-	ctx.drawImage(bgImage, 0, 0);
+	ctx.drawImage(bgImage, -5, -5);
+	
+	//stumps
+	if(stumpImgReady){
+		for (var s = 0; s<STUMPS.length;s++) {
+			//BOUNDING RECT FOR COLLISION DETECT TESTING	
+			//ctx.strokeRect(STUMPS[s].x,STUMPS[s].y,STUMPS[s].sprite.width,STUMPS[s].sprite.height);
+			ctx.drawImage(STUMPS[s].img,STUMPS[s].x,STUMPS[s].y);}}
 	//ctx.drawImage(ALL_PLAYER_OBJECTS[0].playerImg, 0, 0);
 	
 	/**********PLAYER SPRITES********/
@@ -535,6 +583,7 @@ function createAplayer(JSONdata) {
 		 };
 		 
 function UpdateScoreHTML(player) {
+	console.log (parseInt(player.score) > 200);
 	//update the displayed 
 	if (player.id !== UNIQUE_PLAYER_ID) {
 		if(player.score){
@@ -545,6 +594,18 @@ function UpdateScoreHTML(player) {
 		$('#myScore').html("My Score: "+ALL_PLAYER_OBJECTS[0].score);
 	};
 };
+
+function EndTheGame(id) {
+	$('#canvasHolder').css('display','none');
+	$('#showHideNames').css('display','none');
+	$('#avatarSelect').css('display','none');
+	 var Element = document.createElement("div");
+		Element.setAttribute('id','win');
+		Element.setAttribute('class',"score");
+		Element.innerHTML = "Player "+id+" WINS! <br> Press F5 To Play Again";
+		$('#scoreBoard').empty();
+		document.getElementById('scoreBoard').appendChild(Element);
+};
 // Cross-browser support for requestAnimationFrame
 var w = window;
 requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
@@ -553,7 +614,7 @@ requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame
 //add proper onload callbacks for images.  $(document).ready will
 //fire when DOM is ready, not all images.
 $(document).ready(function(){
-	
+
 //build local player
 //PlayerObjBuilder(UNIQUE_PLAYER_ID,x,y,height,width,index in PLAYER_IMAGE_HOLDER);
 ALL_PLAYER_OBJECTS[0] = new PlayerObjBuilder(UNIQUE_PLAYER_ID,0,0,60,60,0);
@@ -622,11 +683,19 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 			if (!JSONdata.id){	
 			//get the top json key.  messages come in format {msgKey:{the message json}}
 			var msgkey = Object.keys(JSONdata)[0];
+			
+				if (msgkey === 'stumps') {
+					//Server sends coords for the stumps to all players
+					var Okeys = Object.keys(JSONdata[msgkey])
+					for (var k=0; k < Okeys.length;k++) {
+						STUMPS.push(new stumpObj(stumpImage,JSONdata[msgkey][Okeys[k]].x,JSONdata[msgkey][Okeys[k]].y));};				
+				}
 				if (msgkey === 'coin'){
 						theCoin.x = JSONdata[msgkey].x;
 						theCoin.y = JSONdata[msgkey].y;
 						theCoin.cid = JSONdata[msgkey].cid;}
-				
+				if (msgkey === 'win'){
+						EndTheGame(JSONdata[msgkey].id)}
 				if (msgkey === 'point'){
 						theCoin.x = JSONdata[msgkey].x;
 						theCoin.y = JSONdata[msgkey].y;
@@ -638,8 +707,8 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 							//UpdateScoreHTML();//update the displayed score	
 						}else{
 							//add 1 to players score
-							var player = ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]]
-							ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]].score+=theCoin.pointAmount
+							var player = ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata[msgkey].id]]
+							ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata[msgkey].id]].score+=theCoin.pointAmount
 							$('#'+player.id).html("Player "+player.id+ " Score:"+player.score);//update the displayed score	
 							//UpdateScoreHTML(player);//update the displayed score	
 						};
@@ -652,8 +721,8 @@ console.log(ALL_PLAYER_OBJECTS[0]);
 							//UpdateScoreHTML(ALL_PLAYER_OBJECTS[0]);//update the displayed score	
 						}else{
 							//update displayed players score
-							var player = ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]]
-							ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata["point"].id]].score -= ALL_PLAYER_OBJECTS[0].fireBallDmg;
+							var player = ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata[msgkey].id]]
+							ALL_PLAYER_OBJECTS[PLAYER_INDEX[JSONdata[msgkey].id]].score -= ALL_PLAYER_OBJECTS[0].fireBallDmg;
 							//$('#'+player.id).html("Player "+player.id+ " Score:"+player.score);//update the displayed score	
 							UpdateScoreHTML(player);//update the displayed score	
 						};

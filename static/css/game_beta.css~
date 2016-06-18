@@ -17,14 +17,14 @@
 	font-weight: bold;
 	font-size: 20px;
 	background-color: gray;
-	float: right;
+	
 }
 .wrapper{
-	position: fixed;
+	position: absolute;/* use fixed instead of absolute to hid scroll bar*/
   /*center in screen*/
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-45%, -45%);
   /* https://css-tricks.com/quick-css-trick-how-to-center-an-object-exactly-in-the-center/ */
   
 }
