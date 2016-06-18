@@ -45,7 +45,7 @@
  		<button  class="button"  value="4" >YELLOW</button>
  		</div>
 		</div>
-		<!-- JS manipulating canvas must be below the actual canvas element -->
+		<!-- JS used for manipulating canvas -->
 		<script type="text/javascript" src="static/js/game_beta.js"></script>
 	</body>
 </html>

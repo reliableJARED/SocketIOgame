@@ -19,12 +19,26 @@
 	background-color: gray;
 	
 }
-.wrapper{
-	position: fixed;
+
+.win{
+	position: fixed;/* use fixed instead of absolute to hid scroll bar*/
+	color: white;
+	font-weight: bold;
+	font-size: 50px;
+	background-color: gray;
   /*center in screen*/
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  /* https://css-tricks.com/quick-css-trick-how-to-center-an-object-exactly-in-the-center/ */
+ 
+}
+.wrapper{
+	position: absolute;/* use fixed instead of absolute to hid scroll bar*/
+  /*center in screen*/
+  top: 50%;
+  left: 50%;
+  transform: translate(-45%, -45%);
   /* https://css-tricks.com/quick-css-trick-how-to-center-an-object-exactly-in-the-center/ */
   
 }
