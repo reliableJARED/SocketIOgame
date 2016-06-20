@@ -279,10 +279,10 @@ FireBallSprite.prototype.draw = function(x,y){
 var theCoin = new coinObj(coinImage,-100,-100,100,100,9,4);//default loc off screen until server sends loc
 console.log(theCoin);
 
-var STUMPS = []; //build stumps from coords from server
+var STUMPS = []; //container for stumps built from coordinates sent from server
 
-
-// player object builder for ***NETWORK CONNECTED PLAYERS****
+/*************************************************/
+// PLAYER Object Builder
 function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
   this.id = id;
   this.speed = 128; //pixels per second when moving
@@ -296,10 +296,10 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
   this.fireballImg = FIREBALL_IMAGE_HOLDER[this.imgIndex];
   this.sprite = new Sprite(this.playerImg,this.height,this.width,
 		{"default":{"x":0,"y":2,"frames":1,"layout":"horz","frameRate":20},
-		"down":{"x":0,"y":262,"frames":10,"layout":"horz","frameRate":5},
-		"up":{"x":0,"y":390,"frames":10,"layout":"horz","frameRate":5},
-		 "right":{"x":0,"y":462,"frames":10,"layout":"horz","frameRate":5},
-		 "left":{"x":0,"y":330,"frames":10,"layout":"horz","frameRate":5}});
+		"down":{"x":0,"y":262,"frames":10,"layout":"horz","frameRate":1},
+		"up":{"x":0,"y":390,"frames":10,"layout":"horz","frameRate":1},
+		 "right":{"x":0,"y":462,"frames":10,"layout":"horz","frameRate":1},
+		 "left":{"x":0,"y":330,"frames":10,"layout":"horz","frameRate":1}});
   this.direction="default";
   this.fireBallDmg = 10;//how much dmg your fire ball does
   this.fireBallsActive =[];//array of active fireballs on screen
@@ -318,8 +318,79 @@ function PlayerObjBuilder(id, x, y,height,width,imgIdx) {
      this.fireBall = true;//active fireball
 	  this.fireBallDelay = 0;//reset delay
   	};
-};
+ this.ShootFireBall_easy = function (targetPlayer) {
+ 	
+	var LorR = this.x - targetPlayer.x //positive = target is left, negative = target is right
+	var UorD = this.y - targetPlayer.y //positive = target is above, negative = target is below
 
+	//First determine what quadrant the target player is
+	//then do triangle test compare right triangle between target and self, and wall and self
+	//to get shoot direction
+	if (LorR > 0 && UorD > 0) {
+		//target: Top-Left
+		//these two delta can be compared to determine what direction to shoot
+		var ratioX = (this.x - targetPlayer.x); 
+		var ratioY = (this.y - targetPlayer.y); 
+		if ((ratioX/ratioY) >= .5 && (ratioX/ratioY) <= 2 ) {
+			this.ShootFireBall({65:true,87:true});//shoot diagonal 
+			return {65:true,87:true};//used for server update
+		}else if((ratioX/ratioY) > 2){
+				this.ShootFireBall({65:true});//shoot left
+				return {65:true};
+		}else {
+				this.ShootFireBall({87:true});//shoot up
+				return {87:true};};
+		}
+
+		else if (LorR < 0 && UorD > 0) {
+		//TopRight
+		//these two delta can be compared to determine what direction to shoot
+		var ratioX = (targetPlayer.x - this.x); 
+		var ratioY = (this.y - targetPlayer.y); 
+			if ((ratioX/ratioY) >= .5 && (ratioX/ratioY) <= 2 ) {
+				this.ShootFireBall({68:true,87:true});//shoot diagonal 
+				return {68:true,87:true};
+			}else if((ratioX/ratioY) > 2){
+				this.ShootFireBall({68:true});//shoot right
+				return {68:true};
+			}else{
+				this.ShootFireBall({87:true});//shoot up 
+				return {87:true};};
+		}
+		else if (LorR > 0 && UorD < 0) {
+		//BottomLeft
+		//these two delta can be compared to determine what direction to shoot
+		var ratioX = (this.x - targetPlayer.x); 
+		var ratioY = (targetPlayer.y - this.y); 
+			if ((ratioX/ratioY) >= .5 && (ratioX/ratioY) <= 2 ) {
+				this.ShootFireBall({65:true,83:true});//shoot diagonal 
+				return {65:true,83:true};
+			}else if((ratioX/ratioY) > 2){
+				this.ShootFireBall({65:true});//shoot left
+				return {65:true};
+			}else {
+				this.ShootFireBall({83:true})//shoot down 
+				return {83:true};};
+		}
+		else if (LorR < 0 && UorD < 0) {
+		//BottomRight
+		//these two delta can be compared to determine what direction to shoot
+		var ratioX = (targetPlayer.x - this.x); 
+		var ratioY = (targetPlayer.y - this.y); 
+		console.log(ratioX);
+
+			if ((ratioX/ratioY) >= .5 && (ratioX/ratioY) <= 2 ) {
+				this.ShootFireBall({68:true,83:true});//shoot diagonal
+				return  {68:true,83:true};
+			}else if((ratioX/ratioY) > 2){
+				this.ShootFireBall({68:true}); //shoot right
+				return {68:true} 
+			}else {
+				this.ShootFireBall({83:true});//shoot down
+				return {83:true};}
+			};
+	};
+};
 
 // Coin object builder
 function coinObj(img,x,y,h,w,numFrames,speed) {
@@ -382,7 +453,9 @@ var update = function (modifier) {
 	var PreviousFramePosition_X = ALL_PLAYER_OBJECTS[0].x;
 	var PreviousFramePosition_Y = ALL_PLAYER_OBJECTS[0].y;
 	var ShotFired = false;//check if user shot fireball, used tell server if you did
-	
+	var ShotFired_easy = false;//check if user shot fireball with autoaim mode
+		
+		
 	if (ALL_PLAYER_OBJECTS[0].fireBallDelay <= ALL_PLAYER_OBJECTS[0].fireBallDelay_count) {
 		ALL_PLAYER_OBJECTS[0].fireBallDelay ++;//this is being used as a timer to restrict rate of fire
 	};
@@ -419,7 +492,15 @@ var update = function (modifier) {
 				shootSound.play();
 				ALL_PLAYER_OBJECTS[0].ShootFireBall(keysDown);
 				ShotFired = true;}}}
-	
+	/************** SHOOT FIREBALL - EASY ************/
+	if (32 in keysDown) {
+		if (ALL_PLAYER_OBJECTS[0].fireBallDelay > ALL_PLAYER_OBJECTS[0].fireBallDelay_count) {
+			if (ALL_PLAYER_OBJECTS[0].fireBallsActive.length < ALL_PLAYER_OBJECTS[0].maxFireBalls) {
+				shootSound.currentTime=0;
+				shootSound.play();
+				autoAim = ALL_PLAYER_OBJECTS[0].ShootFireBall_easy(ALL_PLAYER_OBJECTS[1]);
+				ShotFired_easy = true;
+	}}}
 	/************  FIREBALL LOCATION/COLLISION UPDATES  *************/
 	/* Local player = ALL_PLAYER_OBJECTS[0] */
 	/******************************************************************/
@@ -499,9 +580,12 @@ ALL_PLAYER_OBJECTS[0].x = Math.floor(ALL_PLAYER_OBJECTS[0].x);
 	//If player has made a move, tell the server so movement can be broadcast to other connected players
 	//ALL_PLAYER_OBJECTS[0].imgIndex is broadcast so others know what image to use for you if you are new to the game.
 	//should change this to only being broadcast on connection...TODO
-	if (PreviousFramePosition_X !== ALL_PLAYER_OBJECTS[0].x || PreviousFramePosition_Y !== ALL_PLAYER_OBJECTS[0].y || ShotFired) {
+	if (PreviousFramePosition_X !== ALL_PLAYER_OBJECTS[0].x || PreviousFramePosition_Y !== ALL_PLAYER_OBJECTS[0].y || ShotFired || ShotFired_easy) {
 		if (ShotFired) {
 			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':keysDown,'s':ALL_PLAYER_OBJECTS[0].score}}));
+		}
+		if (ShotFired_easy) {
+			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':autoAim,'s':ALL_PLAYER_OBJECTS[0].score}}));
 		}else {
 			mySocket.send(JSON.stringify({'mov':{'id':UNIQUE_PLAYER_ID,'x':ALL_PLAYER_OBJECTS[0].x,'y':ALL_PLAYER_OBJECTS[0].y,'ix':ALL_PLAYER_OBJECTS[0].imgIndex,'d':ALL_PLAYER_OBJECTS[0].direction,'f':false,'s':ALL_PLAYER_OBJECTS[0].score}}));
 		}	
@@ -527,7 +611,7 @@ function CollisionCheck (obj,obj2) {
 var render = function () {
 
 	//background
-	ctx.drawImage(bgImage, -5, -5);
+	ctx.drawImage(bgImage, -2, -2);
 	
 	//stumps
 	if(stumpImgReady){
@@ -612,6 +696,11 @@ function UpdateScoreHTML(player) {
 };
 
 function EndTheGame(id) {
+	/*
+	need to clear all player.score out and have a button to play again
+	which just toggles hid show of main game canvas.  using F5 can work tho
+	if using local storage
+	*/
 	//make new canvas
 	var Wcanvas = document.createElement("canvas");
 	var Wctx = Wcanvas.getContext("2d");
